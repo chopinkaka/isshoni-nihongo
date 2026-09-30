@@ -1,0 +1,1329 @@
+{
+ "schemaVersion": 1,
+ "hiragana": [
+  {
+   "k": "あ",
+   "kr": "아",
+   "ro": "a",
+   "type": "basic"
+  },
+  {
+   "k": "い",
+   "kr": "이",
+   "ro": "i",
+   "type": "basic"
+  },
+  {
+   "k": "う",
+   "kr": "우",
+   "ro": "u",
+   "type": "basic"
+  },
+  {
+   "k": "え",
+   "kr": "에",
+   "ro": "e",
+   "type": "basic"
+  },
+  {
+   "k": "お",
+   "kr": "오",
+   "ro": "o",
+   "type": "basic"
+  },
+  {
+   "k": "か",
+   "kr": "카",
+   "ro": "ka",
+   "type": "basic"
+  },
+  {
+   "k": "き",
+   "kr": "키",
+   "ro": "ki",
+   "type": "basic"
+  },
+  {
+   "k": "く",
+   "kr": "쿠",
+   "ro": "ku",
+   "type": "basic"
+  },
+  {
+   "k": "け",
+   "kr": "케",
+   "ro": "ke",
+   "type": "basic"
+  },
+  {
+   "k": "こ",
+   "kr": "코",
+   "ro": "ko",
+   "type": "basic"
+  },
+  {
+   "k": "さ",
+   "kr": "사",
+   "ro": "sa",
+   "type": "basic"
+  },
+  {
+   "k": "し",
+   "kr": "시",
+   "ro": "shi",
+   "type": "basic"
+  },
+  {
+   "k": "す",
+   "kr": "스",
+   "ro": "su",
+   "type": "basic"
+  },
+  {
+   "k": "せ",
+   "kr": "세",
+   "ro": "se",
+   "type": "basic"
+  },
+  {
+   "k": "そ",
+   "kr": "소",
+   "ro": "so",
+   "type": "basic"
+  },
+  {
+   "k": "た",
+   "kr": "타",
+   "ro": "ta",
+   "type": "basic"
+  },
+  {
+   "k": "ち",
+   "kr": "치",
+   "ro": "chi",
+   "type": "basic"
+  },
+  {
+   "k": "つ",
+   "kr": "츠",
+   "ro": "tsu",
+   "type": "basic"
+  },
+  {
+   "k": "て",
+   "kr": "테",
+   "ro": "te",
+   "type": "basic"
+  },
+  {
+   "k": "と",
+   "kr": "토",
+   "ro": "to",
+   "type": "basic"
+  },
+  {
+   "k": "な",
+   "kr": "나",
+   "ro": "na",
+   "type": "basic"
+  },
+  {
+   "k": "に",
+   "kr": "니",
+   "ro": "ni",
+   "type": "basic"
+  },
+  {
+   "k": "ぬ",
+   "kr": "누",
+   "ro": "nu",
+   "type": "basic"
+  },
+  {
+   "k": "ね",
+   "kr": "네",
+   "ro": "ne",
+   "type": "basic"
+  },
+  {
+   "k": "の",
+   "kr": "노",
+   "ro": "no",
+   "type": "basic"
+  },
+  {
+   "k": "は",
+   "kr": "하",
+   "ro": "ha",
+   "type": "basic"
+  },
+  {
+   "k": "ひ",
+   "kr": "히",
+   "ro": "hi",
+   "type": "basic"
+  },
+  {
+   "k": "ふ",
+   "kr": "후",
+   "ro": "fu",
+   "type": "basic"
+  },
+  {
+   "k": "へ",
+   "kr": "헤",
+   "ro": "he",
+   "type": "basic"
+  },
+  {
+   "k": "ほ",
+   "kr": "호",
+   "ro": "ho",
+   "type": "basic"
+  },
+  {
+   "k": "ま",
+   "kr": "마",
+   "ro": "ma",
+   "type": "basic"
+  },
+  {
+   "k": "み",
+   "kr": "미",
+   "ro": "mi",
+   "type": "basic"
+  },
+  {
+   "k": "む",
+   "kr": "무",
+   "ro": "mu",
+   "type": "basic"
+  },
+  {
+   "k": "め",
+   "kr": "메",
+   "ro": "me",
+   "type": "basic"
+  },
+  {
+   "k": "も",
+   "kr": "모",
+   "ro": "mo",
+   "type": "basic"
+  },
+  {
+   "k": "や",
+   "kr": "야",
+   "ro": "ya",
+   "type": "basic"
+  },
+  {
+   "k": "ゆ",
+   "kr": "유",
+   "ro": "yu",
+   "type": "basic"
+  },
+  {
+   "k": "よ",
+   "kr": "요",
+   "ro": "yo",
+   "type": "basic"
+  },
+  {
+   "k": "ら",
+   "kr": "라",
+   "ro": "ra",
+   "type": "basic"
+  },
+  {
+   "k": "り",
+   "kr": "리",
+   "ro": "ri",
+   "type": "basic"
+  },
+  {
+   "k": "る",
+   "kr": "루",
+   "ro": "ru",
+   "type": "basic"
+  },
+  {
+   "k": "れ",
+   "kr": "레",
+   "ro": "re",
+   "type": "basic"
+  },
+  {
+   "k": "ろ",
+   "kr": "로",
+   "ro": "ro",
+   "type": "basic"
+  },
+  {
+   "k": "わ",
+   "kr": "와",
+   "ro": "wa",
+   "type": "basic"
+  },
+  {
+   "k": "を",
+   "kr": "오",
+   "ro": "wo",
+   "type": "basic"
+  },
+  {
+   "k": "ん",
+   "kr": "응",
+   "ro": "n",
+   "type": "basic"
+  },
+  {
+   "k": "が",
+   "kr": "가",
+   "ro": "ga",
+   "type": "dakuten"
+  },
+  {
+   "k": "ぎ",
+   "kr": "기",
+   "ro": "gi",
+   "type": "dakuten"
+  },
+  {
+   "k": "ぐ",
+   "kr": "구",
+   "ro": "gu",
+   "type": "dakuten"
+  },
+  {
+   "k": "げ",
+   "kr": "게",
+   "ro": "ge",
+   "type": "dakuten"
+  },
+  {
+   "k": "ご",
+   "kr": "고",
+   "ro": "go",
+   "type": "dakuten"
+  },
+  {
+   "k": "ざ",
+   "kr": "자",
+   "ro": "za",
+   "type": "dakuten"
+  },
+  {
+   "k": "じ",
+   "kr": "지",
+   "ro": "ji",
+   "type": "dakuten"
+  },
+  {
+   "k": "ず",
+   "kr": "즈",
+   "ro": "zu",
+   "type": "dakuten"
+  },
+  {
+   "k": "ぜ",
+   "kr": "제",
+   "ro": "ze",
+   "type": "dakuten"
+  },
+  {
+   "k": "ぞ",
+   "kr": "조",
+   "ro": "zo",
+   "type": "dakuten"
+  },
+  {
+   "k": "だ",
+   "kr": "다",
+   "ro": "da",
+   "type": "dakuten"
+  },
+  {
+   "k": "ぢ",
+   "kr": "지",
+   "ro": "ji",
+   "type": "dakuten"
+  },
+  {
+   "k": "づ",
+   "kr": "즈",
+   "ro": "zu",
+   "type": "dakuten"
+  },
+  {
+   "k": "で",
+   "kr": "데",
+   "ro": "de",
+   "type": "dakuten"
+  },
+  {
+   "k": "ど",
+   "kr": "도",
+   "ro": "do",
+   "type": "dakuten"
+  },
+  {
+   "k": "ば",
+   "kr": "바",
+   "ro": "ba",
+   "type": "dakuten"
+  },
+  {
+   "k": "び",
+   "kr": "비",
+   "ro": "bi",
+   "type": "dakuten"
+  },
+  {
+   "k": "ぶ",
+   "kr": "부",
+   "ro": "bu",
+   "type": "dakuten"
+  },
+  {
+   "k": "べ",
+   "kr": "베",
+   "ro": "be",
+   "type": "dakuten"
+  },
+  {
+   "k": "ぼ",
+   "kr": "보",
+   "ro": "bo",
+   "type": "dakuten"
+  },
+  {
+   "k": "ぱ",
+   "kr": "파",
+   "ro": "pa",
+   "type": "dakuten"
+  },
+  {
+   "k": "ぴ",
+   "kr": "피",
+   "ro": "pi",
+   "type": "dakuten"
+  },
+  {
+   "k": "ぷ",
+   "kr": "푸",
+   "ro": "pu",
+   "type": "dakuten"
+  },
+  {
+   "k": "ぺ",
+   "kr": "페",
+   "ro": "pe",
+   "type": "dakuten"
+  },
+  {
+   "k": "ぽ",
+   "kr": "포",
+   "ro": "po",
+   "type": "dakuten"
+  },
+  {
+   "k": "きゃ",
+   "kr": "캬",
+   "ro": "kya",
+   "type": "yoon"
+  },
+  {
+   "k": "きゅ",
+   "kr": "큐",
+   "ro": "kyu",
+   "type": "yoon"
+  },
+  {
+   "k": "きょ",
+   "kr": "쿄",
+   "ro": "kyo",
+   "type": "yoon"
+  },
+  {
+   "k": "しゃ",
+   "kr": "샤",
+   "ro": "sha",
+   "type": "yoon"
+  },
+  {
+   "k": "しゅ",
+   "kr": "슈",
+   "ro": "shu",
+   "type": "yoon"
+  },
+  {
+   "k": "しょ",
+   "kr": "쇼",
+   "ro": "sho",
+   "type": "yoon"
+  },
+  {
+   "k": "ちゃ",
+   "kr": "챠",
+   "ro": "cha",
+   "type": "yoon"
+  },
+  {
+   "k": "ちゅ",
+   "kr": "츄",
+   "ro": "chu",
+   "type": "yoon"
+  },
+  {
+   "k": "ちょ",
+   "kr": "쵸",
+   "ro": "cho",
+   "type": "yoon"
+  },
+  {
+   "k": "にゃ",
+   "kr": "냐",
+   "ro": "nya",
+   "type": "yoon"
+  },
+  {
+   "k": "にゅ",
+   "kr": "뉴",
+   "ro": "nyu",
+   "type": "yoon"
+  },
+  {
+   "k": "にょ",
+   "kr": "뇨",
+   "ro": "nyo",
+   "type": "yoon"
+  },
+  {
+   "k": "ひゃ",
+   "kr": "햐",
+   "ro": "hya",
+   "type": "yoon"
+  },
+  {
+   "k": "ひゅ",
+   "kr": "휴",
+   "ro": "hyu",
+   "type": "yoon"
+  },
+  {
+   "k": "ひょ",
+   "kr": "효",
+   "ro": "hyo",
+   "type": "yoon"
+  },
+  {
+   "k": "みゃ",
+   "kr": "먀",
+   "ro": "mya",
+   "type": "yoon"
+  },
+  {
+   "k": "みゅ",
+   "kr": "뮤",
+   "ro": "myu",
+   "type": "yoon"
+  },
+  {
+   "k": "みょ",
+   "kr": "묘",
+   "ro": "myo",
+   "type": "yoon"
+  },
+  {
+   "k": "りゃ",
+   "kr": "랴",
+   "ro": "rya",
+   "type": "yoon"
+  },
+  {
+   "k": "りゅ",
+   "kr": "류",
+   "ro": "ryu",
+   "type": "yoon"
+  },
+  {
+   "k": "りょ",
+   "kr": "료",
+   "ro": "ryo",
+   "type": "yoon"
+  },
+  {
+   "k": "ぎゃ",
+   "kr": "갸",
+   "ro": "gya",
+   "type": "yoon"
+  },
+  {
+   "k": "ぎゅ",
+   "kr": "규",
+   "ro": "gyu",
+   "type": "yoon"
+  },
+  {
+   "k": "ぎょ",
+   "kr": "교",
+   "ro": "gyo",
+   "type": "yoon"
+  },
+  {
+   "k": "じゃ",
+   "kr": "쟈",
+   "ro": "ja",
+   "type": "yoon"
+  },
+  {
+   "k": "じゅ",
+   "kr": "쥬",
+   "ro": "ju",
+   "type": "yoon"
+  },
+  {
+   "k": "じょ",
+   "kr": "죠",
+   "ro": "jo",
+   "type": "yoon"
+  },
+  {
+   "k": "びゃ",
+   "kr": "뱌",
+   "ro": "bya",
+   "type": "yoon"
+  },
+  {
+   "k": "びゅ",
+   "kr": "뷰",
+   "ro": "byu",
+   "type": "yoon"
+  },
+  {
+   "k": "びょ",
+   "kr": "뵤",
+   "ro": "byo",
+   "type": "yoon"
+  },
+  {
+   "k": "ぴゃ",
+   "kr": "퍄",
+   "ro": "pya",
+   "type": "yoon"
+  },
+  {
+   "k": "ぴゅ",
+   "kr": "퓨",
+   "ro": "pyu",
+   "type": "yoon"
+  },
+  {
+   "k": "ぴょ",
+   "kr": "표",
+   "ro": "pyo",
+   "type": "yoon"
+  }
+ ],
+ "katakana": [
+  {
+   "k": "ア",
+   "kr": "아",
+   "ro": "a",
+   "type": "basic"
+  },
+  {
+   "k": "イ",
+   "kr": "이",
+   "ro": "i",
+   "type": "basic"
+  },
+  {
+   "k": "ウ",
+   "kr": "우",
+   "ro": "u",
+   "type": "basic"
+  },
+  {
+   "k": "エ",
+   "kr": "에",
+   "ro": "e",
+   "type": "basic"
+  },
+  {
+   "k": "オ",
+   "kr": "오",
+   "ro": "o",
+   "type": "basic"
+  },
+  {
+   "k": "カ",
+   "kr": "카",
+   "ro": "ka",
+   "type": "basic"
+  },
+  {
+   "k": "キ",
+   "kr": "키",
+   "ro": "ki",
+   "type": "basic"
+  },
+  {
+   "k": "ク",
+   "kr": "쿠",
+   "ro": "ku",
+   "type": "basic"
+  },
+  {
+   "k": "ケ",
+   "kr": "케",
+   "ro": "ke",
+   "type": "basic"
+  },
+  {
+   "k": "コ",
+   "kr": "코",
+   "ro": "ko",
+   "type": "basic"
+  },
+  {
+   "k": "サ",
+   "kr": "사",
+   "ro": "sa",
+   "type": "basic"
+  },
+  {
+   "k": "シ",
+   "kr": "시",
+   "ro": "shi",
+   "type": "basic"
+  },
+  {
+   "k": "ス",
+   "kr": "스",
+   "ro": "su",
+   "type": "basic"
+  },
+  {
+   "k": "セ",
+   "kr": "세",
+   "ro": "se",
+   "type": "basic"
+  },
+  {
+   "k": "ソ",
+   "kr": "소",
+   "ro": "so",
+   "type": "basic"
+  },
+  {
+   "k": "タ",
+   "kr": "타",
+   "ro": "ta",
+   "type": "basic"
+  },
+  {
+   "k": "チ",
+   "kr": "치",
+   "ro": "chi",
+   "type": "basic"
+  },
+  {
+   "k": "ツ",
+   "kr": "츠",
+   "ro": "tsu",
+   "type": "basic"
+  },
+  {
+   "k": "テ",
+   "kr": "테",
+   "ro": "te",
+   "type": "basic"
+  },
+  {
+   "k": "ト",
+   "kr": "토",
+   "ro": "to",
+   "type": "basic"
+  },
+  {
+   "k": "ナ",
+   "kr": "나",
+   "ro": "na",
+   "type": "basic"
+  },
+  {
+   "k": "ニ",
+   "kr": "니",
+   "ro": "ni",
+   "type": "basic"
+  },
+  {
+   "k": "ヌ",
+   "kr": "누",
+   "ro": "nu",
+   "type": "basic"
+  },
+  {
+   "k": "ネ",
+   "kr": "네",
+   "ro": "ne",
+   "type": "basic"
+  },
+  {
+   "k": "ノ",
+   "kr": "노",
+   "ro": "no",
+   "type": "basic"
+  },
+  {
+   "k": "ハ",
+   "kr": "하",
+   "ro": "ha",
+   "type": "basic"
+  },
+  {
+   "k": "ヒ",
+   "kr": "히",
+   "ro": "hi",
+   "type": "basic"
+  },
+  {
+   "k": "フ",
+   "kr": "후",
+   "ro": "fu",
+   "type": "basic"
+  },
+  {
+   "k": "ヘ",
+   "kr": "헤",
+   "ro": "he",
+   "type": "basic"
+  },
+  {
+   "k": "ホ",
+   "kr": "호",
+   "ro": "ho",
+   "type": "basic"
+  },
+  {
+   "k": "マ",
+   "kr": "마",
+   "ro": "ma",
+   "type": "basic"
+  },
+  {
+   "k": "ミ",
+   "kr": "미",
+   "ro": "mi",
+   "type": "basic"
+  },
+  {
+   "k": "ム",
+   "kr": "무",
+   "ro": "mu",
+   "type": "basic"
+  },
+  {
+   "k": "メ",
+   "kr": "메",
+   "ro": "me",
+   "type": "basic"
+  },
+  {
+   "k": "モ",
+   "kr": "모",
+   "ro": "mo",
+   "type": "basic"
+  },
+  {
+   "k": "ヤ",
+   "kr": "야",
+   "ro": "ya",
+   "type": "basic"
+  },
+  {
+   "k": "ユ",
+   "kr": "유",
+   "ro": "yu",
+   "type": "basic"
+  },
+  {
+   "k": "ヨ",
+   "kr": "요",
+   "ro": "yo",
+   "type": "basic"
+  },
+  {
+   "k": "ラ",
+   "kr": "라",
+   "ro": "ra",
+   "type": "basic"
+  },
+  {
+   "k": "リ",
+   "kr": "리",
+   "ro": "ri",
+   "type": "basic"
+  },
+  {
+   "k": "ル",
+   "kr": "루",
+   "ro": "ru",
+   "type": "basic"
+  },
+  {
+   "k": "レ",
+   "kr": "레",
+   "ro": "re",
+   "type": "basic"
+  },
+  {
+   "k": "ロ",
+   "kr": "로",
+   "ro": "ro",
+   "type": "basic"
+  },
+  {
+   "k": "ワ",
+   "kr": "와",
+   "ro": "wa",
+   "type": "basic"
+  },
+  {
+   "k": "ヲ",
+   "kr": "오",
+   "ro": "wo",
+   "type": "basic"
+  },
+  {
+   "k": "ン",
+   "kr": "응",
+   "ro": "n",
+   "type": "basic"
+  },
+  {
+   "k": "ガ",
+   "kr": "가",
+   "ro": "ga",
+   "type": "dakuten"
+  },
+  {
+   "k": "ギ",
+   "kr": "기",
+   "ro": "gi",
+   "type": "dakuten"
+  },
+  {
+   "k": "グ",
+   "kr": "구",
+   "ro": "gu",
+   "type": "dakuten"
+  },
+  {
+   "k": "ゲ",
+   "kr": "게",
+   "ro": "ge",
+   "type": "dakuten"
+  },
+  {
+   "k": "ゴ",
+   "kr": "고",
+   "ro": "go",
+   "type": "dakuten"
+  },
+  {
+   "k": "ザ",
+   "kr": "자",
+   "ro": "za",
+   "type": "dakuten"
+  },
+  {
+   "k": "ジ",
+   "kr": "지",
+   "ro": "ji",
+   "type": "dakuten"
+  },
+  {
+   "k": "ズ",
+   "kr": "즈",
+   "ro": "zu",
+   "type": "dakuten"
+  },
+  {
+   "k": "ゼ",
+   "kr": "제",
+   "ro": "ze",
+   "type": "dakuten"
+  },
+  {
+   "k": "ゾ",
+   "kr": "조",
+   "ro": "zo",
+   "type": "dakuten"
+  },
+  {
+   "k": "ダ",
+   "kr": "다",
+   "ro": "da",
+   "type": "dakuten"
+  },
+  {
+   "k": "ヂ",
+   "kr": "지",
+   "ro": "ji",
+   "type": "dakuten"
+  },
+  {
+   "k": "ヅ",
+   "kr": "즈",
+   "ro": "zu",
+   "type": "dakuten"
+  },
+  {
+   "k": "デ",
+   "kr": "데",
+   "ro": "de",
+   "type": "dakuten"
+  },
+  {
+   "k": "ド",
+   "kr": "도",
+   "ro": "do",
+   "type": "dakuten"
+  },
+  {
+   "k": "バ",
+   "kr": "바",
+   "ro": "ba",
+   "type": "dakuten"
+  },
+  {
+   "k": "ビ",
+   "kr": "비",
+   "ro": "bi",
+   "type": "dakuten"
+  },
+  {
+   "k": "ブ",
+   "kr": "부",
+   "ro": "bu",
+   "type": "dakuten"
+  },
+  {
+   "k": "ベ",
+   "kr": "베",
+   "ro": "be",
+   "type": "dakuten"
+  },
+  {
+   "k": "ボ",
+   "kr": "보",
+   "ro": "bo",
+   "type": "dakuten"
+  },
+  {
+   "k": "パ",
+   "kr": "파",
+   "ro": "pa",
+   "type": "dakuten"
+  },
+  {
+   "k": "ピ",
+   "kr": "피",
+   "ro": "pi",
+   "type": "dakuten"
+  },
+  {
+   "k": "プ",
+   "kr": "푸",
+   "ro": "pu",
+   "type": "dakuten"
+  },
+  {
+   "k": "ペ",
+   "kr": "페",
+   "ro": "pe",
+   "type": "dakuten"
+  },
+  {
+   "k": "ポ",
+   "kr": "포",
+   "ro": "po",
+   "type": "dakuten"
+  },
+  {
+   "k": "キャ",
+   "kr": "캬",
+   "ro": "kya",
+   "type": "yoon"
+  },
+  {
+   "k": "キュ",
+   "kr": "큐",
+   "ro": "kyu",
+   "type": "yoon"
+  },
+  {
+   "k": "キョ",
+   "kr": "쿄",
+   "ro": "kyo",
+   "type": "yoon"
+  },
+  {
+   "k": "シャ",
+   "kr": "샤",
+   "ro": "sha",
+   "type": "yoon"
+  },
+  {
+   "k": "シュ",
+   "kr": "슈",
+   "ro": "shu",
+   "type": "yoon"
+  },
+  {
+   "k": "ショ",
+   "kr": "쇼",
+   "ro": "sho",
+   "type": "yoon"
+  },
+  {
+   "k": "チャ",
+   "kr": "챠",
+   "ro": "cha",
+   "type": "yoon"
+  },
+  {
+   "k": "チュ",
+   "kr": "츄",
+   "ro": "chu",
+   "type": "yoon"
+  },
+  {
+   "k": "チョ",
+   "kr": "쵸",
+   "ro": "cho",
+   "type": "yoon"
+  },
+  {
+   "k": "ニャ",
+   "kr": "냐",
+   "ro": "nya",
+   "type": "yoon"
+  },
+  {
+   "k": "ニュ",
+   "kr": "뉴",
+   "ro": "nyu",
+   "type": "yoon"
+  },
+  {
+   "k": "ニョ",
+   "kr": "뇨",
+   "ro": "nyo",
+   "type": "yoon"
+  },
+  {
+   "k": "ヒャ",
+   "kr": "햐",
+   "ro": "hya",
+   "type": "yoon"
+  },
+  {
+   "k": "ヒュ",
+   "kr": "휴",
+   "ro": "hyu",
+   "type": "yoon"
+  },
+  {
+   "k": "ヒョ",
+   "kr": "효",
+   "ro": "hyo",
+   "type": "yoon"
+  },
+  {
+   "k": "ミャ",
+   "kr": "먀",
+   "ro": "mya",
+   "type": "yoon"
+  },
+  {
+   "k": "ミュ",
+   "kr": "뮤",
+   "ro": "myu",
+   "type": "yoon"
+  },
+  {
+   "k": "ミョ",
+   "kr": "묘",
+   "ro": "myo",
+   "type": "yoon"
+  },
+  {
+   "k": "リャ",
+   "kr": "랴",
+   "ro": "rya",
+   "type": "yoon"
+  },
+  {
+   "k": "リュ",
+   "kr": "류",
+   "ro": "ryu",
+   "type": "yoon"
+  },
+  {
+   "k": "リョ",
+   "kr": "료",
+   "ro": "ryo",
+   "type": "yoon"
+  },
+  {
+   "k": "ギャ",
+   "kr": "갸",
+   "ro": "gya",
+   "type": "yoon"
+  },
+  {
+   "k": "ギュ",
+   "kr": "규",
+   "ro": "gyu",
+   "type": "yoon"
+  },
+  {
+   "k": "ギョ",
+   "kr": "교",
+   "ro": "gyo",
+   "type": "yoon"
+  },
+  {
+   "k": "ジャ",
+   "kr": "쟈",
+   "ro": "ja",
+   "type": "yoon"
+  },
+  {
+   "k": "ジュ",
+   "kr": "쥬",
+   "ro": "ju",
+   "type": "yoon"
+  },
+  {
+   "k": "ジョ",
+   "kr": "죠",
+   "ro": "jo",
+   "type": "yoon"
+  },
+  {
+   "k": "ビャ",
+   "kr": "뱌",
+   "ro": "bya",
+   "type": "yoon"
+  },
+  {
+   "k": "ビュ",
+   "kr": "뷰",
+   "ro": "byu",
+   "type": "yoon"
+  },
+  {
+   "k": "ビョ",
+   "kr": "뵤",
+   "ro": "byo",
+   "type": "yoon"
+  },
+  {
+   "k": "ピャ",
+   "kr": "퍄",
+   "ro": "pya",
+   "type": "yoon"
+  },
+  {
+   "k": "ピュ",
+   "kr": "퓨",
+   "ro": "pyu",
+   "type": "yoon"
+  },
+  {
+   "k": "ピョ",
+   "kr": "표",
+   "ro": "pyo",
+   "type": "yoon"
+  }
+ ],
+ "confusions": {
+  "hiragana": [
+   [
+    "さ",
+    "ち"
+   ],
+   [
+    "は",
+    "ほ"
+   ],
+   [
+    "ね",
+    "れ",
+    "わ"
+   ],
+   [
+    "ぬ",
+    "め"
+   ],
+   [
+    "る",
+    "ろ"
+   ],
+   [
+    "い",
+    "り"
+   ],
+   [
+    "あ",
+    "お"
+   ],
+   [
+    "き",
+    "さ"
+   ]
+  ],
+  "katakana": [
+   [
+    "シ",
+    "ツ"
+   ],
+   [
+    "ソ",
+    "ン"
+   ],
+   [
+    "ク",
+    "ケ",
+    "タ"
+   ],
+   [
+    "ウ",
+    "ワ",
+    "フ"
+   ],
+   [
+    "コ",
+    "ユ"
+   ],
+   [
+    "ヌ",
+    "ス"
+   ],
+   [
+    "ア",
+    "マ"
+   ],
+   [
+    "チ",
+    "テ"
+   ]
+  ]
+ },
+ "passRule": "기본 92자(히라가나 46 + 가타카나 46) 무작위 퀴즈 정답률 95% 이상이면 워밍업 종료"
+}

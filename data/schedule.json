@@ -1,0 +1,1760 @@
+{
+ "schemaVersion": 1,
+ "start": "2026-10-05",
+ "firstReadDone": "2026-12-18",
+ "trip": "2027-01-26",
+ "rules": {
+  "newWordsPerDay": 5,
+  "studyDays": "월~금",
+  "saturday": "주간 복습(+파트 롤플레잉)",
+  "sunday": "휴식 — 이날 돌아올 복습 카드는 월요일로",
+  "srsIntervalsDays": [
+   1,
+   3,
+   7,
+   14,
+   30
+  ]
+ },
+ "days": [
+  {
+   "date": "2026-10-01",
+   "week": 0,
+   "dow": "목",
+   "type": "warmup",
+   "kanaWarmup": true,
+   "note": "광우 가나 워밍업만 (본 진도 시작 전)"
+  },
+  {
+   "date": "2026-10-02",
+   "week": 0,
+   "dow": "금",
+   "type": "warmup",
+   "kanaWarmup": true,
+   "note": "광우 가나 워밍업만 (본 진도 시작 전)"
+  },
+  {
+   "date": "2026-10-03",
+   "week": 0,
+   "dow": "토",
+   "type": "warmup",
+   "kanaWarmup": true,
+   "note": "광우 가나 워밍업만 (본 진도 시작 전)"
+  },
+  {
+   "date": "2026-10-04",
+   "week": 0,
+   "dow": "일",
+   "type": "warmup",
+   "kanaWarmup": true,
+   "note": "광우 가나 워밍업만 (본 진도 시작 전)"
+  },
+  {
+   "date": "2026-10-05",
+   "week": 1,
+   "dow": "월",
+   "kanaWarmup": true,
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p01"
+   },
+   "newWords": [
+    "a001",
+    "a002",
+    "a003",
+    "a004",
+    "a005"
+   ],
+   "newWordRange": [
+    1,
+    5
+   ]
+  },
+  {
+   "date": "2026-10-06",
+   "week": 1,
+   "dow": "화",
+   "kanaWarmup": true,
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p01"
+    ]
+   },
+   "newWords": [
+    "a006",
+    "a007",
+    "a008",
+    "a009",
+    "a010"
+   ],
+   "newWordRange": [
+    6,
+    10
+   ]
+  },
+  {
+   "date": "2026-10-07",
+   "week": 1,
+   "dow": "수",
+   "kanaWarmup": true,
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p02"
+   },
+   "newWords": [
+    "a011",
+    "a012",
+    "a013",
+    "a014",
+    "a015"
+   ],
+   "newWordRange": [
+    11,
+    15
+   ]
+  },
+  {
+   "date": "2026-10-08",
+   "week": 1,
+   "dow": "목",
+   "kanaWarmup": true,
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p02"
+    ]
+   },
+   "newWords": [
+    "a016",
+    "a017",
+    "a018",
+    "a019",
+    "a020"
+   ],
+   "newWordRange": [
+    16,
+    20
+   ]
+  },
+  {
+   "date": "2026-10-09",
+   "week": 1,
+   "dow": "금",
+   "kanaWarmup": true,
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p03"
+   },
+   "newWords": [
+    "a021",
+    "a022",
+    "a023",
+    "a024",
+    "a025"
+   ],
+   "newWordRange": [
+    21,
+    25
+   ]
+  },
+  {
+   "date": "2026-10-10",
+   "week": 1,
+   "dow": "토",
+   "kanaWarmup": true,
+   "type": "saturday"
+  },
+  {
+   "date": "2026-10-11",
+   "week": 1,
+   "dow": "일",
+   "kanaWarmup": true,
+   "type": "rest"
+  },
+  {
+   "date": "2026-10-12",
+   "week": 2,
+   "dow": "월",
+   "kanaWarmup": true,
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p04"
+   },
+   "newWords": [
+    "a026",
+    "a027",
+    "a028",
+    "a029",
+    "a030"
+   ],
+   "newWordRange": [
+    26,
+    30
+   ]
+  },
+  {
+   "date": "2026-10-13",
+   "week": 2,
+   "dow": "화",
+   "kanaWarmup": true,
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p04"
+    ]
+   },
+   "newWords": [
+    "a031",
+    "a032",
+    "a033",
+    "a034",
+    "a035"
+   ],
+   "newWordRange": [
+    31,
+    35
+   ]
+  },
+  {
+   "date": "2026-10-14",
+   "week": 2,
+   "dow": "수",
+   "kanaWarmup": true,
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p05"
+   },
+   "newWords": [
+    "a036",
+    "a037",
+    "a038",
+    "a039",
+    "a040"
+   ],
+   "newWordRange": [
+    36,
+    40
+   ]
+  },
+  {
+   "date": "2026-10-15",
+   "week": 2,
+   "dow": "목",
+   "kanaWarmup": true,
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p05"
+    ]
+   },
+   "newWords": [
+    "a041",
+    "a042",
+    "a043",
+    "a044",
+    "a045"
+   ],
+   "newWordRange": [
+    41,
+    45
+   ]
+  },
+  {
+   "date": "2026-10-16",
+   "week": 2,
+   "dow": "금",
+   "kanaWarmup": true,
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p06"
+   },
+   "newWords": [
+    "a046",
+    "a047",
+    "a048",
+    "a049",
+    "a050"
+   ],
+   "newWordRange": [
+    46,
+    50
+   ]
+  },
+  {
+   "date": "2026-10-17",
+   "week": 2,
+   "dow": "토",
+   "kanaWarmup": true,
+   "type": "saturday",
+   "roleplay": "r1"
+  },
+  {
+   "date": "2026-10-18",
+   "week": 2,
+   "dow": "일",
+   "kanaWarmup": true,
+   "type": "rest"
+  },
+  {
+   "date": "2026-10-19",
+   "week": 3,
+   "dow": "월",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p07"
+   },
+   "newWords": [
+    "a051",
+    "a052",
+    "a053",
+    "a054",
+    "a055"
+   ],
+   "newWordRange": [
+    51,
+    55
+   ]
+  },
+  {
+   "date": "2026-10-20",
+   "week": 3,
+   "dow": "화",
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p07"
+    ]
+   },
+   "newWords": [
+    "a056",
+    "a057",
+    "a058",
+    "a059",
+    "a060"
+   ],
+   "newWordRange": [
+    56,
+    60
+   ]
+  },
+  {
+   "date": "2026-10-21",
+   "week": 3,
+   "dow": "수",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p08"
+   },
+   "newWords": [
+    "a061",
+    "a062",
+    "a063",
+    "a064",
+    "a065"
+   ],
+   "newWordRange": [
+    61,
+    65
+   ]
+  },
+  {
+   "date": "2026-10-22",
+   "week": 3,
+   "dow": "목",
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p08"
+    ]
+   },
+   "newWords": [
+    "a066",
+    "a067",
+    "a068",
+    "a069",
+    "a070"
+   ],
+   "newWordRange": [
+    66,
+    70
+   ]
+  },
+  {
+   "date": "2026-10-23",
+   "week": 3,
+   "dow": "금",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p09"
+   },
+   "newWords": [
+    "a071",
+    "a072",
+    "a073",
+    "a074",
+    "a075"
+   ],
+   "newWordRange": [
+    71,
+    75
+   ]
+  },
+  {
+   "date": "2026-10-24",
+   "week": 3,
+   "dow": "토",
+   "type": "saturday"
+  },
+  {
+   "date": "2026-10-25",
+   "week": 3,
+   "dow": "일",
+   "type": "rest"
+  },
+  {
+   "date": "2026-10-26",
+   "week": 4,
+   "dow": "월",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p10"
+   },
+   "newWords": [
+    "a076",
+    "a077",
+    "a078",
+    "a079",
+    "a080"
+   ],
+   "newWordRange": [
+    76,
+    80
+   ]
+  },
+  {
+   "date": "2026-10-27",
+   "week": 4,
+   "dow": "화",
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p10"
+    ]
+   },
+   "newWords": [
+    "a081",
+    "a082",
+    "a083",
+    "a084",
+    "a085"
+   ],
+   "newWordRange": [
+    81,
+    85
+   ]
+  },
+  {
+   "date": "2026-10-28",
+   "week": 4,
+   "dow": "수",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p11"
+   },
+   "newWords": [
+    "a086",
+    "a087",
+    "a088",
+    "a089",
+    "a090"
+   ],
+   "newWordRange": [
+    86,
+    90
+   ]
+  },
+  {
+   "date": "2026-10-29",
+   "week": 4,
+   "dow": "목",
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p11"
+    ]
+   },
+   "newWords": [
+    "a091",
+    "a092",
+    "a093",
+    "a094",
+    "a095"
+   ],
+   "newWordRange": [
+    91,
+    95
+   ]
+  },
+  {
+   "date": "2026-10-30",
+   "week": 4,
+   "dow": "금",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p12"
+   },
+   "newWords": [
+    "a096",
+    "a097",
+    "a098",
+    "a099",
+    "a100"
+   ],
+   "newWordRange": [
+    96,
+    100
+   ]
+  },
+  {
+   "date": "2026-10-31",
+   "week": 4,
+   "dow": "토",
+   "type": "saturday",
+   "roleplay": "r2"
+  },
+  {
+   "date": "2026-11-01",
+   "week": 4,
+   "dow": "일",
+   "type": "rest"
+  },
+  {
+   "date": "2026-11-02",
+   "week": 5,
+   "dow": "월",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p13"
+   },
+   "newWords": [
+    "a101",
+    "a102",
+    "a103",
+    "a104",
+    "a105"
+   ],
+   "newWordRange": [
+    101,
+    105
+   ]
+  },
+  {
+   "date": "2026-11-03",
+   "week": 5,
+   "dow": "화",
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p13"
+    ]
+   },
+   "newWords": [
+    "a106",
+    "a107",
+    "a108",
+    "a109",
+    "a110"
+   ],
+   "newWordRange": [
+    106,
+    110
+   ]
+  },
+  {
+   "date": "2026-11-04",
+   "week": 5,
+   "dow": "수",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p14"
+   },
+   "newWords": [
+    "a111",
+    "a112",
+    "a113",
+    "a114",
+    "a115"
+   ],
+   "newWordRange": [
+    111,
+    115
+   ]
+  },
+  {
+   "date": "2026-11-05",
+   "week": 5,
+   "dow": "목",
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p14"
+    ]
+   },
+   "newWords": [
+    "a116",
+    "a117",
+    "a118",
+    "a119",
+    "a120"
+   ],
+   "newWordRange": [
+    116,
+    120
+   ]
+  },
+  {
+   "date": "2026-11-06",
+   "week": 5,
+   "dow": "금",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p15"
+   },
+   "newWords": [
+    "a121",
+    "a122",
+    "a123",
+    "a124",
+    "a125"
+   ],
+   "newWordRange": [
+    121,
+    125
+   ]
+  },
+  {
+   "date": "2026-11-07",
+   "week": 5,
+   "dow": "토",
+   "type": "saturday"
+  },
+  {
+   "date": "2026-11-08",
+   "week": 5,
+   "dow": "일",
+   "type": "rest"
+  },
+  {
+   "date": "2026-11-09",
+   "week": 6,
+   "dow": "월",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p16"
+   },
+   "newWords": [
+    "a126",
+    "a127",
+    "a128",
+    "a129",
+    "a130"
+   ],
+   "newWordRange": [
+    126,
+    130
+   ]
+  },
+  {
+   "date": "2026-11-10",
+   "week": 6,
+   "dow": "화",
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p16"
+    ]
+   },
+   "newWords": [
+    "n001",
+    "n003",
+    "n004",
+    "n005",
+    "n006"
+   ],
+   "newWordRange": [
+    131,
+    135
+   ],
+   "extraReview": [
+    "n002"
+   ]
+  },
+  {
+   "date": "2026-11-11",
+   "week": 6,
+   "dow": "수",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p17"
+   },
+   "newWords": [
+    "n007",
+    "n008",
+    "n009",
+    "n010",
+    "n011"
+   ],
+   "newWordRange": [
+    136,
+    140
+   ]
+  },
+  {
+   "date": "2026-11-12",
+   "week": 6,
+   "dow": "목",
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p17"
+    ]
+   },
+   "newWords": [
+    "n012",
+    "n013",
+    "n014",
+    "n015",
+    "n016"
+   ],
+   "newWordRange": [
+    141,
+    145
+   ]
+  },
+  {
+   "date": "2026-11-13",
+   "week": 6,
+   "dow": "금",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p18"
+   },
+   "newWords": [
+    "n017",
+    "n018",
+    "n019",
+    "n020",
+    "n021"
+   ],
+   "newWordRange": [
+    146,
+    150
+   ]
+  },
+  {
+   "date": "2026-11-14",
+   "week": 6,
+   "dow": "토",
+   "type": "saturday",
+   "roleplay": "r3"
+  },
+  {
+   "date": "2026-11-15",
+   "week": 6,
+   "dow": "일",
+   "type": "rest"
+  },
+  {
+   "date": "2026-11-16",
+   "week": 7,
+   "dow": "월",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p19"
+   },
+   "newWords": [
+    "n022",
+    "n023",
+    "n024",
+    "n025",
+    "n026"
+   ],
+   "newWordRange": [
+    151,
+    155
+   ]
+  },
+  {
+   "date": "2026-11-17",
+   "week": 7,
+   "dow": "화",
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p19"
+    ]
+   },
+   "newWords": [
+    "n027",
+    "n028",
+    "n029",
+    "n030",
+    "n031"
+   ],
+   "newWordRange": [
+    156,
+    160
+   ]
+  },
+  {
+   "date": "2026-11-18",
+   "week": 7,
+   "dow": "수",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p20"
+   },
+   "newWords": [
+    "n036",
+    "n037",
+    "n038",
+    "n039",
+    "n040"
+   ],
+   "newWordRange": [
+    161,
+    165
+   ],
+   "extraReview": [
+    "n032",
+    "n033",
+    "n034",
+    "n035"
+   ]
+  },
+  {
+   "date": "2026-11-19",
+   "week": 7,
+   "dow": "목",
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p20"
+    ]
+   },
+   "newWords": [
+    "n042",
+    "n043",
+    "n044",
+    "n046",
+    "n047"
+   ],
+   "newWordRange": [
+    166,
+    170
+   ],
+   "extraReview": [
+    "n041",
+    "n045"
+   ]
+  },
+  {
+   "date": "2026-11-20",
+   "week": 7,
+   "dow": "금",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p21"
+   },
+   "newWords": [
+    "n048",
+    "n049",
+    "n050",
+    "n053",
+    "n054"
+   ],
+   "newWordRange": [
+    171,
+    175
+   ],
+   "extraReview": [
+    "n051",
+    "n052"
+   ]
+  },
+  {
+   "date": "2026-11-21",
+   "week": 7,
+   "dow": "토",
+   "type": "saturday"
+  },
+  {
+   "date": "2026-11-22",
+   "week": 7,
+   "dow": "일",
+   "type": "rest"
+  },
+  {
+   "date": "2026-11-23",
+   "week": 8,
+   "dow": "월",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p22"
+   },
+   "newWords": [
+    "n063",
+    "n067",
+    "n070",
+    "n071",
+    "n072"
+   ],
+   "newWordRange": [
+    176,
+    180
+   ],
+   "extraReview": [
+    "n055",
+    "n056",
+    "n057",
+    "n058",
+    "n059",
+    "n060",
+    "n061",
+    "n062",
+    "n064",
+    "n065",
+    "n066",
+    "n068",
+    "n069"
+   ]
+  },
+  {
+   "date": "2026-11-24",
+   "week": 8,
+   "dow": "화",
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p22"
+    ]
+   },
+   "newWords": [
+    "n073",
+    "n074",
+    "n075",
+    "n076",
+    "n077"
+   ],
+   "newWordRange": [
+    181,
+    185
+   ]
+  },
+  {
+   "date": "2026-11-25",
+   "week": 8,
+   "dow": "수",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p23"
+   },
+   "newWords": [
+    "n078",
+    "n080",
+    "n081",
+    "n082",
+    "n083"
+   ],
+   "newWordRange": [
+    186,
+    190
+   ],
+   "extraReview": [
+    "n079"
+   ]
+  },
+  {
+   "date": "2026-11-26",
+   "week": 8,
+   "dow": "목",
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p23"
+    ]
+   },
+   "newWords": [
+    "n084",
+    "n085",
+    "n086",
+    "n087",
+    "n088"
+   ],
+   "newWordRange": [
+    191,
+    195
+   ]
+  },
+  {
+   "date": "2026-11-27",
+   "week": 8,
+   "dow": "금",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p24"
+   },
+   "newWords": [
+    "n089",
+    "n090",
+    "n091",
+    "n092",
+    "n093"
+   ],
+   "newWordRange": [
+    196,
+    200
+   ]
+  },
+  {
+   "date": "2026-11-28",
+   "week": 8,
+   "dow": "토",
+   "type": "saturday",
+   "roleplay": "r4"
+  },
+  {
+   "date": "2026-11-29",
+   "week": 8,
+   "dow": "일",
+   "type": "rest"
+  },
+  {
+   "date": "2026-11-30",
+   "week": 9,
+   "dow": "월",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p25"
+   },
+   "newWords": [
+    "n094",
+    "n095",
+    "n096",
+    "n097",
+    "n098"
+   ],
+   "newWordRange": [
+    201,
+    205
+   ]
+  },
+  {
+   "date": "2026-12-01",
+   "week": 9,
+   "dow": "화",
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p25"
+    ]
+   },
+   "newWords": [
+    "n099",
+    "n101",
+    "n102",
+    "n103",
+    "n104"
+   ],
+   "newWordRange": [
+    206,
+    210
+   ],
+   "extraReview": [
+    "n100"
+   ]
+  },
+  {
+   "date": "2026-12-02",
+   "week": 9,
+   "dow": "수",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p26"
+   },
+   "newWords": [
+    "n106",
+    "n107",
+    "n108",
+    "n109",
+    "n110"
+   ],
+   "newWordRange": [
+    211,
+    215
+   ],
+   "extraReview": [
+    "n105"
+   ]
+  },
+  {
+   "date": "2026-12-03",
+   "week": 9,
+   "dow": "목",
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p26"
+    ]
+   },
+   "newWords": [
+    "n111",
+    "n112",
+    "n113",
+    "n114",
+    "n115"
+   ],
+   "newWordRange": [
+    216,
+    220
+   ]
+  },
+  {
+   "date": "2026-12-04",
+   "week": 9,
+   "dow": "금",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p27"
+   },
+   "newWords": [
+    "n116",
+    "n117",
+    "n118",
+    "n121",
+    "n125"
+   ],
+   "newWordRange": [
+    221,
+    225
+   ],
+   "extraReview": [
+    "n119",
+    "n120",
+    "n122",
+    "n123",
+    "n124"
+   ]
+  },
+  {
+   "date": "2026-12-05",
+   "week": 9,
+   "dow": "토",
+   "type": "saturday",
+   "roleplay": "r5"
+  },
+  {
+   "date": "2026-12-06",
+   "week": 9,
+   "dow": "일",
+   "type": "rest"
+  },
+  {
+   "date": "2026-12-07",
+   "week": 10,
+   "dow": "월",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p28"
+   },
+   "newWords": [
+    "n127",
+    "n128",
+    "n130",
+    "n131",
+    "n132"
+   ],
+   "newWordRange": [
+    226,
+    230
+   ],
+   "extraReview": [
+    "n126",
+    "n129"
+   ]
+  },
+  {
+   "date": "2026-12-08",
+   "week": 10,
+   "dow": "화",
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p28"
+    ]
+   },
+   "newWords": [
+    "n133",
+    "n135",
+    "n140",
+    "n141",
+    "n142"
+   ],
+   "newWordRange": [
+    231,
+    235
+   ],
+   "extraReview": [
+    "n134",
+    "n136",
+    "n137",
+    "n138",
+    "n139"
+   ]
+  },
+  {
+   "date": "2026-12-09",
+   "week": 10,
+   "dow": "수",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p29"
+   },
+   "newWords": [
+    "n143",
+    "n147",
+    "n148",
+    "n149",
+    "n150"
+   ],
+   "newWordRange": [
+    236,
+    240
+   ],
+   "extraReview": [
+    "n144",
+    "n145",
+    "n146"
+   ]
+  },
+  {
+   "date": "2026-12-10",
+   "week": 10,
+   "dow": "목",
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p29"
+    ]
+   },
+   "newWords": [
+    "n152",
+    "n159",
+    "n160",
+    "n161",
+    "n162"
+   ],
+   "newWordRange": [
+    241,
+    245
+   ],
+   "extraReview": [
+    "n151",
+    "n153",
+    "n154",
+    "n155",
+    "n156",
+    "n157",
+    "n158"
+   ]
+  },
+  {
+   "date": "2026-12-11",
+   "week": 10,
+   "dow": "금",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p30"
+   },
+   "newWords": [
+    "n163",
+    "n164",
+    "n165",
+    "n166",
+    "n169"
+   ],
+   "newWordRange": [
+    246,
+    250
+   ],
+   "extraReview": [
+    "n167",
+    "n168"
+   ]
+  },
+  {
+   "date": "2026-12-12",
+   "week": 10,
+   "dow": "토",
+   "type": "saturday"
+  },
+  {
+   "date": "2026-12-13",
+   "week": 10,
+   "dow": "일",
+   "type": "rest"
+  },
+  {
+   "date": "2026-12-14",
+   "week": 11,
+   "dow": "월",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p31"
+   },
+   "newWords": [
+    "n171",
+    "n175",
+    "n176",
+    "n177",
+    "n180"
+   ],
+   "newWordRange": [
+    251,
+    255
+   ],
+   "extraReview": [
+    "n170",
+    "n172",
+    "n173",
+    "n174",
+    "n178",
+    "n179"
+   ]
+  },
+  {
+   "date": "2026-12-15",
+   "week": 11,
+   "dow": "화",
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p31"
+    ]
+   },
+   "newWords": [
+    "n181",
+    "n182",
+    "n183",
+    "n184",
+    "n185"
+   ],
+   "newWordRange": [
+    256,
+    260
+   ]
+  },
+  {
+   "date": "2026-12-16",
+   "week": 11,
+   "dow": "수",
+   "type": "study",
+   "pattern": {
+    "mode": "new",
+    "id": "p32"
+   },
+   "newWords": [
+    "n186",
+    "n187",
+    "n188",
+    "n189",
+    "n190"
+   ],
+   "newWordRange": [
+    261,
+    265
+   ]
+  },
+  {
+   "date": "2026-12-17",
+   "week": 11,
+   "dow": "목",
+   "type": "study",
+   "pattern": {
+    "mode": "review",
+    "ids": [
+     "p32"
+    ]
+   },
+   "newWords": [
+    "n191",
+    "n192",
+    "n193",
+    "n194",
+    "n195"
+   ],
+   "newWordRange": [
+    266,
+    270
+   ]
+  },
+  {
+   "date": "2026-12-18",
+   "week": 11,
+   "dow": "금",
+   "type": "study",
+   "pattern": {
+    "mode": "rally",
+    "ids": [
+     "p01",
+     "p02",
+     "p03",
+     "p04",
+     "p05",
+     "p06",
+     "p07",
+     "p08",
+     "p09",
+     "p10",
+     "p11",
+     "p12",
+     "p13",
+     "p14",
+     "p15",
+     "p16",
+     "p17",
+     "p18",
+     "p19",
+     "p20",
+     "p21",
+     "p22",
+     "p23",
+     "p24",
+     "p25",
+     "p26",
+     "p27",
+     "p28",
+     "p29",
+     "p30",
+     "p31",
+     "p32"
+    ]
+   },
+   "newWords": [
+    "n196",
+    "n197",
+    "n198",
+    "n199",
+    "n200"
+   ],
+   "newWordRange": [
+    271,
+    275
+   ],
+   "note": "1회독 완료 (새 단어 275개 · 패턴 32개)"
+  },
+  {
+   "date": "2026-12-19",
+   "week": 11,
+   "dow": "토",
+   "type": "saturday",
+   "roleplay": "r7",
+   "note": "1회독 완료 다음 날"
+  },
+  {
+   "date": "2026-12-20",
+   "week": 11,
+   "dow": "일",
+   "type": "rest"
+  },
+  {
+   "date": "2026-12-21",
+   "week": 12,
+   "dow": "월",
+   "type": "review",
+   "phase": "연말 복습"
+  },
+  {
+   "date": "2026-12-22",
+   "week": 12,
+   "dow": "화",
+   "type": "review",
+   "phase": "연말 복습"
+  },
+  {
+   "date": "2026-12-23",
+   "week": 12,
+   "dow": "수",
+   "type": "review",
+   "phase": "연말 복습"
+  },
+  {
+   "date": "2026-12-24",
+   "week": 12,
+   "dow": "목",
+   "type": "review",
+   "phase": "연말 복습"
+  },
+  {
+   "date": "2026-12-25",
+   "week": 12,
+   "dow": "금",
+   "type": "review",
+   "phase": "연말 복습"
+  },
+  {
+   "date": "2026-12-26",
+   "week": 12,
+   "dow": "토",
+   "type": "saturday"
+  },
+  {
+   "date": "2026-12-27",
+   "week": 12,
+   "dow": "일",
+   "type": "rest"
+  },
+  {
+   "date": "2026-12-28",
+   "week": 13,
+   "dow": "월",
+   "type": "review",
+   "phase": "총복습"
+  },
+  {
+   "date": "2026-12-29",
+   "week": 13,
+   "dow": "화",
+   "type": "review",
+   "phase": "총복습"
+  },
+  {
+   "date": "2026-12-30",
+   "week": 13,
+   "dow": "수",
+   "type": "review",
+   "phase": "총복습"
+  },
+  {
+   "date": "2026-12-31",
+   "week": 13,
+   "dow": "목",
+   "type": "review",
+   "phase": "총복습"
+  },
+  {
+   "date": "2027-01-01",
+   "week": 13,
+   "dow": "금",
+   "type": "review",
+   "phase": "총복습"
+  },
+  {
+   "date": "2027-01-02",
+   "week": 13,
+   "dow": "토",
+   "type": "saturday"
+  },
+  {
+   "date": "2027-01-03",
+   "week": 13,
+   "dow": "일",
+   "type": "rest"
+  },
+  {
+   "date": "2027-01-04",
+   "week": 14,
+   "dow": "월",
+   "type": "review",
+   "phase": "총복습"
+  },
+  {
+   "date": "2027-01-05",
+   "week": 14,
+   "dow": "화",
+   "type": "review",
+   "phase": "총복습"
+  },
+  {
+   "date": "2027-01-06",
+   "week": 14,
+   "dow": "수",
+   "type": "review",
+   "phase": "총복습"
+  },
+  {
+   "date": "2027-01-07",
+   "week": 14,
+   "dow": "목",
+   "type": "review",
+   "phase": "총복습"
+  },
+  {
+   "date": "2027-01-08",
+   "week": 14,
+   "dow": "금",
+   "type": "review",
+   "phase": "총복습"
+  },
+  {
+   "date": "2027-01-09",
+   "week": 14,
+   "dow": "토",
+   "type": "saturday"
+  },
+  {
+   "date": "2027-01-10",
+   "week": 14,
+   "dow": "일",
+   "type": "rest"
+  },
+  {
+   "date": "2027-01-11",
+   "week": 15,
+   "dow": "월",
+   "type": "review",
+   "phase": "여행 실전"
+  },
+  {
+   "date": "2027-01-12",
+   "week": 15,
+   "dow": "화",
+   "type": "review",
+   "phase": "여행 실전"
+  },
+  {
+   "date": "2027-01-13",
+   "week": 15,
+   "dow": "수",
+   "type": "review",
+   "phase": "여행 실전"
+  },
+  {
+   "date": "2027-01-14",
+   "week": 15,
+   "dow": "목",
+   "type": "review",
+   "phase": "여행 실전"
+  },
+  {
+   "date": "2027-01-15",
+   "week": 15,
+   "dow": "금",
+   "type": "review",
+   "phase": "여행 실전"
+  },
+  {
+   "date": "2027-01-16",
+   "week": 15,
+   "dow": "토",
+   "type": "saturday"
+  },
+  {
+   "date": "2027-01-17",
+   "week": 15,
+   "dow": "일",
+   "type": "rest"
+  },
+  {
+   "date": "2027-01-18",
+   "week": 16,
+   "dow": "월",
+   "type": "review",
+   "phase": "여행 실전"
+  },
+  {
+   "date": "2027-01-19",
+   "week": 16,
+   "dow": "화",
+   "type": "review",
+   "phase": "여행 실전"
+  },
+  {
+   "date": "2027-01-20",
+   "week": 16,
+   "dow": "수",
+   "type": "review",
+   "phase": "여행 실전"
+  },
+  {
+   "date": "2027-01-21",
+   "week": 16,
+   "dow": "목",
+   "type": "review",
+   "phase": "여행 실전"
+  },
+  {
+   "date": "2027-01-22",
+   "week": 16,
+   "dow": "금",
+   "type": "review",
+   "phase": "여행 실전"
+  },
+  {
+   "date": "2027-01-23",
+   "week": 16,
+   "dow": "토",
+   "type": "saturday",
+   "note": "출국 전 마지막 토요일"
+  },
+  {
+   "date": "2027-01-24",
+   "week": 16,
+   "dow": "일",
+   "type": "rest"
+  }
+ ]
+}

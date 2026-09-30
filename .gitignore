@@ -1,0 +1,4 @@
+# 원본 자료는 올리지 않음
+*.pdf
+.DS_Store
+Thumbs.db
