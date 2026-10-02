@@ -36,4 +36,25 @@ for d in days:
     if d.get('roleplay'): assert d['roleplay'] in rids
 news = [d['pattern']['id'] for d in study if d.get('pattern', {}).get('mode') == 'new']
 assert news == [f'p{n:02d}' for n in range(1, 33)], 'patterns introduced in order once'
-print('OK: words 330 (study 275, dup 55) · patterns 32 (ex 189, quiz 94, roleplay 6) · kana 104×2 · schedule', len(days), 'days')
+# 후리가나(jpr/exr): 한자가 있는 문장엔 반드시 있고, [읽기]를 지우면 원문과 같고, 읽기는 히라가나뿐
+KJ = re.compile(r'[一-鿿々〆]')
+def check_ruby(rec, src, dst, where):
+    if KJ.search(rec[src]):
+        if dst in rec or src == 'jp':
+            assert dst in rec, (where, 'missing ' + dst)
+    if dst in rec:
+        assert re.sub(r'\[[^\]]*\]', '', rec[dst]) == rec[src], (where, dst, 'differs from original')
+        assert all(re.fullmatch(r'[ぁ-ゖー・]+', r) for r in re.findall(r'\[([^\]]*)\]', rec[dst])), (where, dst, 'reading must be hiragana')
+        assert KJ.search(rec[src]), (where, dst, 'ruby on text without kanji')
+nr = 0
+for p in pats:
+    check_ruby(p, 'jp', 'jpr', p['id'])
+    for e in p['examples']: check_ruby(e, 'jp', 'jpr', p['id'])
+    for q in p['quiz']: check_ruby(q, 'jp', 'jpr', p['id'])
+for r in P['roleplays']:
+    for l in r['lines']: check_ruby(l, 'jp', 'jpr', r['id'])
+for w in words:
+    if w.get('ex'): check_ruby(w, 'ex', 'exr', w['id']); assert (not KJ.search(w['ex'])) or 'exr' in w, (w['id'], 'ex needs exr')
+    if 'jpr' in w: check_ruby(w, 'jp', 'jpr', w['id'])
+nr = sum('jpr' in x for p in pats for x in [p] + p['examples'] + p['quiz']) + sum('jpr' in l for r in P['roleplays'] for l in r['lines'])
+print('OK: words 330 (study 275, dup 55) · patterns 32 (ex 189, quiz 94, roleplay 6) · kana 104×2 · schedule', len(days), 'days · 후리가나 패턴', nr, '문장')

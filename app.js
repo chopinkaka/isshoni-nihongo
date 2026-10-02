@@ -6,6 +6,12 @@
   const $ = (s, r = document) => r.querySelector(s);
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const jp = t => `<span lang="ja">${esc(t)}</span>`;
+  const RUBY_RE = /([一-鿿々〻]+)\[([^\]]+)\]/g;
+  /** 일본어 표시. ruby(`駅[えき]まで`)가 있고 설정이 켜져 있으면 한자 위에 후리가나를 얹는다. */
+  const rb = (text, ruby) => {
+    if (!ruby || state.settings.furigana === false) return jp(text);
+    return `<span lang="ja">${esc(ruby).replace(RUBY_RE, '<ruby>$1<rt>$2</rt></ruby>')}</span>`;
+  };
   const STAGE_DAYS = C.INTERVALS;
 
   /* ================= 환경: 체험 모드(?date=YYYY-MM-DD) ================= */
@@ -42,13 +48,28 @@
 
   /* ================= 데이터 ================= */
   let DATA = null;
+  let LEX = new Map();
   async function loadData() {
     const names = ['words', 'patterns', 'kana', 'schedule'];
     const res = await Promise.all(names.map(n => fetch(`data/${n}.json`).then(r => { if (!r.ok) throw new Error(`${n}.json ${r.status}`); return r.json(); })));
     const raw = {}; names.forEach((n, i) => { raw[n] = res[i]; });
     DATA = C.indexData(raw);
+    LEX = C.buildLexicon(DATA);
   }
-  const W = id => DATA.wordsById[id];
+  const rubyFor = (jpText, kana) => C.autoRuby(jpText, kana) || C.lexRuby(jpText, LEX);
+  const customWord = id => {
+    const c = state.custom.words[id]; if (!c) return null;
+    return { id, jp: c.jp, kana: c.kana || c.jp, jpr: rubyFor(c.jp, c.kana), kr: '', mean: c.mean, cat: '내 단어', note: c.note || '', custom: true };
+  };
+  const customPattern = id => {
+    const c = state.custom.patterns[id]; if (!c) return null;
+    const examples = c.examples.map(e => ({ jp: e.jp, jpr: rubyFor(e.jp, e.kana), mean: e.mean, kr: '', kana: e.kana || '' }));
+    return { id, custom: true, no: '내', part: 0, jp: c.jp, jpr: rubyFor(c.jp, c.kana), kr: '', mean: c.mean, kana: c.kana || '', examples, quiz: examples.map(e => ({ q: e.mean, jp: e.jp, jpr: e.jpr, kr: '' })) };
+  };
+  const W = id => DATA.wordsById[id] || customWord(id);
+  const PAT = id => DATA.patternsById[id] || customPattern(id);
+  const allWords = () => DATA.studyWords.concat(Object.keys(state.custom.words).map(customWord).filter(Boolean));
+  const allPatterns = () => DATA.patterns.patterns.concat(Object.keys(state.custom.patterns).map(customPattern).filter(Boolean));
   const exCard = w => (w.ex ? w : (w.n5 && W(w.n5) && W(w.n5).ex ? W(w.n5) : (w.dupOf ? w : null)));
   const partName = no => (DATA.patterns.parts.find(p => p.no === no) || {}).name || '';
 
@@ -136,8 +157,10 @@
       case 'today': html = viewToday(); break;
       case 'session': if (!SESS) { location.replace('#/today'); return; } html = viewSession(); hideTabs = true; tab = 'today'; break;
       case 'done': html = viewDone(); hideTabs = true; tab = 'today'; break;
-      case 'words': html = parts[1] ? viewWordDetail(parts[1]) : viewWords(); break;
-      case 'patterns': html = parts[1] ? viewPatternDetail(parts[1]) : viewPatterns(); break;
+      case 'words':
+        html = parts[1] === 'new' ? viewWordForm() : parts[1] === 'edit' ? viewWordForm(parts[2]) : parts[1] ? viewWordDetail(parts[1]) : viewWords(); hideTabs = parts[1] === 'new' || parts[1] === 'edit'; break;
+      case 'patterns':
+        html = parts[1] === 'new' ? viewPatternForm() : parts[1] === 'edit' ? viewPatternForm(parts[2]) : parts[1] ? viewPatternDetail(parts[1]) : viewPatterns(); hideTabs = parts[1] === 'new' || parts[1] === 'edit'; break;
       case 'practice': startPractice(parts[1]); return;
       case 'roleplay': startRoleplayPractice(parts[1]); return;
       case 'kana': html = parts[1] === 'quiz' ? viewKanaQuiz() : viewKana(); hideTabs = parts[1] === 'quiz'; break;
@@ -361,8 +384,15 @@
     go('#/session');
   }
   function startPractice(pid) {
-    const p = DATA.patternsById[pid]; if (!p) { location.replace('#/patterns'); return; }
-    const items = patternItems({ mode: 'new', pids: [pid], quizIds: C.quizIds(p), examples: true }).map(x => { delete x.endsPattern; return x; });
+    const p = PAT(pid); if (!p) { location.replace('#/patterns'); return; }
+    let items;
+    if (p.custom) {      // 내 패턴: SRS 없이 따라 말하기 → 퀴즈(뜻 → 일본어)
+      items = [{ kind: 'pattern', pid, step: '패턴', sub: '오늘의 패턴' }]
+        .concat(p.examples.map((_, idx) => ({ kind: 'example', pid, idx, step: '패턴', sub: '듣고 따라 말하기' })))
+        .concat(C.shuffle(p.quiz.map((_, idx) => idx)).map(idx => ({ kind: 'cquiz', pid, idx, step: '패턴', sub: '퀴즈' })));
+    } else {
+      items = patternItems({ mode: 'new', pids: [pid], quizIds: C.quizIds(p), examples: true }).map(x => { delete x.endsPattern; return x; });
+    }
     newSession('practice', items, { returnTo: `#/patterns/${pid}`, quizzesOnlyAdvance: true });
     location.replace('#/session');
   }
@@ -395,12 +425,14 @@
     const exSrc = w.dupOf ? w : ex;
     const parts = [];
     parts.push(`<div class="cat">${esc(base.cat)}</div>`);
-    parts.push(`<div class="bigjp">${jp(base.jp)}</div>`);
-    if (base.kana && base.kana !== base.jp) parts.push(`<div class="kana">${jp(base.kana)} ${revBadge(base.kanaBy === 'claude')}</div>`);
+    parts.push(`<div class="bigjp">${rb(base.jp, base.jpr)}</div>`);
+    if (base.jpr && state.settings.furigana !== false) {       // 후리가나가 이미 읽기를 보여주므로 읽기 줄은 생략(검수 표시만 유지)
+      if (base.kanaBy === 'claude') parts.push(`<div>${revBadge(true)}</div>`);
+    } else if (base.kana && base.kana !== base.jp) parts.push(`<div class="kana">${jp(base.kana)} ${revBadge(base.kanaBy === 'claude')}</div>`);
     parts.push(KR_LINE(base.kr, ui));
     parts.push(`<div class="mean">${esc(base.mean)}</div>`);
     if (exSrc && exSrc.ex) {
-      parts.push(`<div class="ex"><div class="jpline">${jp(exSrc.ex)} ${speakBtn(exSrc.ex, 'sm')}</div>${krVisible() || ui.kr ? `<div class="kr">${esc(exSrc.exKr || '')}</div>` : ''}<div class="mean sm">${esc(exSrc.exMean || '')}</div></div>`);
+      parts.push(`<div class="ex"><div class="jpline">${rb(exSrc.ex, exSrc.exr)} ${speakBtn(exSrc.ex, 'sm')}</div>${krVisible() || ui.kr ? `<div class="kr">${esc(exSrc.exKr || '')}</div>` : ''}<div class="mean sm">${esc(exSrc.exMean || '')}</div></div>`);
     }
     const note = (exSrc && exSrc.note) || base.note;
     if (note) parts.push(`<div class="note">💡 ${esc(note)}</div>`);
@@ -411,7 +443,7 @@
     switch (it.kind) {
       case 'review': case 'recall': {
         const w = W(it.id), c = state.cards[it.id];
-        const front = `<div class="cat">${it.kind === 'review' ? `복습 · ${c ? c.stage : 1}단계` : '방금 배운 단어'}</div><div class="bigjp">${jp(w.jp)}</div>${speakBtn(wordSay(w))}`;
+        const front = `<div class="cat">${it.kind === 'review' ? `복습 · ${c ? c.stage : 1}단계` : '방금 배운 단어'}</div><div class="bigjp">${rb(w.jp, w.jpr)}</div>${speakBtn(wordSay(w))}`;
         if (!ui.reveal) return `<div class="card q">${front}<p class="muted">뜻을 떠올려 보세요</p><button class="btn lg block primary" data-act="reveal">정답 보기</button></div>`;
         return `<div class="card q">${wordBody(w, ui)}${speakBtn(wordSay(w))}</div>${gradeBar(['몰라요', '헷갈려요', '알아요'])}`;
       }
@@ -424,18 +456,18 @@
         return `<div class="card q"><div class="cat">이미 배운 단어의 예문</div>${wordBody(dup, ui)}<button class="btn lg block primary" data-act="extra-next">확인했어요 ▶</button></div>`;
       }
       case 'pattern': {
-        const p = DATA.patternsById[it.pid];
-        return `<div class="card q"><div class="cat">PART ${p.part} · ${esc(partName(p.part))} · 패턴 ${p.no}</div><div class="bigjp">${jp(p.jp)}</div>${speakBtn(p.jp)}${KR_LINE(p.kr, ui)}<div class="mean">${esc(p.mean)}</div><p class="muted">이 틀에 단어만 바꿔 넣어요. 예문을 들어 볼까요?</p><button class="btn lg block primary" data-act="next">예문 듣기 ▶</button></div>`;
+        const p = PAT(it.pid);
+        return `<div class="card q"><div class="cat">${p.custom ? '내 패턴' : `PART ${p.part} · ${esc(partName(p.part))} · 패턴 ${p.no}`}</div><div class="bigjp">${rb(p.jp, p.jpr)}</div>${speakBtn(p.jp)}${KR_LINE(p.kr, ui)}<div class="mean">${esc(p.mean)}</div><p class="muted">이 틀에 단어만 바꿔 넣어요. 예문을 들어 볼까요?</p><button class="btn lg block primary" data-act="next">예문 듣기 ▶</button></div>`;
       }
       case 'example': {
-        const p = DATA.patternsById[it.pid], e = p.examples[it.idx];
-        return `<div class="card q"><div class="cat">${jp(p.jp)}</div><div class="bigjp jp-s">${jp(e.jp)}</div>${speakBtn(e.jp)}${KR_LINE(e.kr, ui)}<div class="mean">${esc(e.mean)}</div><p class="muted">듣고 그대로 따라 말해 보세요</p><button class="btn lg block primary" data-act="next">따라 말했어요 ▶</button></div>`;
+        const p = PAT(it.pid), e = p.examples[it.idx];
+        return `<div class="card q"><div class="patline">${rb(p.jp, p.jpr)}</div><div class="bigjp jp-s">${rb(e.jp, e.jpr)}</div>${speakBtn(e.jp)}${e.kana && !p.custom ? '' : (e.kana ? `<div class="kana">${jp(e.kana)}</div>` : '')}${KR_LINE(e.kr, ui)}<div class="mean">${esc(e.mean)}</div><p class="muted">듣고 그대로 따라 말해 보세요</p><button class="btn lg block primary" data-act="next">따라 말했어요 ▶</button></div>`;
       }
-      case 'quiz': {
-        const { p, q } = C.quizOf(DATA, it.qid);
-        const head = `<div class="cat">${jp(p.jp)}</div><div class="quizq">${esc(q.q)}</div>`;
+      case 'quiz': case 'cquiz': {
+        const { p, q } = it.kind === 'cquiz' ? { p: PAT(it.pid), q: PAT(it.pid).quiz[it.idx] } : C.quizOf(DATA, it.qid);
+        const head = `<div class="patline">${rb(p.jp, p.jpr)}</div><div class="quizq">${esc(q.q)}</div>`;
         if (!ui.reveal) return `<div class="card q">${head}<p class="muted">일본어로 소리 내어 말한 뒤 정답을 확인하세요</p><button class="btn lg block primary" data-act="reveal">정답 보기</button></div>`;
-        return `<div class="card q">${head}<div class="bigjp jp-s">${jp(q.jp)}</div>${speakBtn(q.jp)} ${revBadge(q.by === 'claude')}${KR_LINE(q.kr, ui)}<p class="muted">내가 한 말과 비교해 스스로 채점해요</p></div>${gradeBar(['틀렸어요', '헷갈려요', '맞았어요'])}`;
+        return `<div class="card q">${head}<div class="bigjp jp-s">${rb(q.jp, q.jpr)}</div>${speakBtn(q.jp)} ${revBadge(q.by === 'claude')}${KR_LINE(q.kr, ui)}<p class="muted">내가 한 말과 비교해 스스로 채점해요</p></div>${gradeBar(['틀렸어요', '헷갈려요', '맞았어요'])}`;
       }
       case 'roleplay': return roleplayView(it, s);
       default: return '';
@@ -444,14 +476,14 @@
   function roleplayView(it, s) {
     const r = DATA.rolesById[it.rid], ui = s.ui;
     if (ui.line == null) { ui.line = 0; ui.reveal = false; }
-    const done = r.lines.slice(0, ui.line).map(l => `<div class="rl ${l.who}"><b>${l.who === 'me' ? '나' : '점원'}</b> ${jp(l.jp)}<small>${esc(l.mean)}</small></div>`).join('');
+    const done = r.lines.slice(0, ui.line).map(l => `<div class="rl ${l.who}"><b>${l.who === 'me' ? '나' : '점원'}</b> ${rb(l.jp, l.jpr)}<small>${esc(l.mean)}</small></div>`).join('');
     const l = r.lines[ui.line];
     let cur = '';
     if (l) {
       const who = l.who === 'me';
       cur = `<div class="rl cur ${l.who}">${l.cue ? `<div class="cue">(${esc(l.cue)})</div>` : ''}<b>${who ? '나' : '점원'}</b>
         ${who && !ui.reveal ? `<div class="quizq">${esc(l.mean)}</div><p class="muted">일본어로 말해 보세요</p><button class="btn lg block primary" data-act="rp-reveal">정답 보기</button>`
-          : `<div class="bigjp jp-s">${jp(l.jp)}</div>${speakBtn(l.jp)}${KR_LINE(l.kr, ui)}<div class="mean">${esc(l.mean)}</div><button class="btn lg block primary" data-act="rp-next">${ui.line === r.lines.length - 1 ? '마치기 ✓' : '다음 ▶'}</button>`}</div>`;
+          : `<div class="bigjp jp-s">${rb(l.jp, l.jpr)}</div>${speakBtn(l.jp)}${KR_LINE(l.kr, ui)}<div class="mean">${esc(l.mean)}</div><button class="btn lg block primary" data-act="rp-next">${ui.line === r.lines.length - 1 ? '마치기 ✓' : '다음 ▶'}</button>`}</div>`;
     }
     return `<div class="card q"><div class="cat">롤플레잉 · PART ${r.part} ${esc(partName(r.part))}</div><div class="rl-list">${done}</div>${cur}</div>`;
   }
@@ -462,8 +494,8 @@
       case 'review': case 'recall': speakOrWarn(wordSay(W(it.id))); break;
       case 'learn': { const w = W(it.id); const ex = exCard(w); speakOrWarn([wordSay(w)].concat(ex && ex.ex ? [ex.ex] : [])); break; }
       case 'extra': speakOrWarn(W(it.id).ex); break;
-      case 'pattern': speakOrWarn(DATA.patternsById[it.pid].jp); break;
-      case 'example': speakOrWarn(DATA.patternsById[it.pid].examples[it.idx].jp); break;
+      case 'pattern': speakOrWarn(PAT(it.pid).jp); break;
+      case 'example': speakOrWarn(PAT(it.pid).examples[it.idx].jp); break;
       case 'roleplay': { const l = DATA.rolesById[it.rid].lines[ui.line || 0]; if (l && l.who === 'staff') speakOrWarn(l.jp); break; }
       default: break;
     }
@@ -491,7 +523,7 @@
     const s = SESS, it = s.items[s.i];
     const id = it.qid || it.id;
     tickTime();
-    if (!it.again) {
+    if (!it.again && it.kind !== 'cquiz') {
       const r = C.grade(state, id, g, s.date);
       if (r.isReview && s.kind === 'today') daily(s.date).reviewCount = (daily(s.date).reviewCount || 0) + 1;
     }
@@ -532,26 +564,63 @@
 
   /* ================= 단어장 ================= */
   const WB = { q: '', filter: 'all', cat: '' };
+  const PB = { q: '' };
+  let PREFILL = null;
+  const norm = s => C.hira(String(s || '').toLowerCase()).replace(/[\s・〜～~、。？?！!]/g, '');
+  const dictUrl = q => 'https://ja.dict.naver.com/#/search?query=' + encodeURIComponent(q);
+  const isJa = s => /[぀-ヿ一-鿿]/.test(s);
   const isConfused = id => { const c = state.cards[id]; return !!(state.flags[id] || (c && (c.lastGrade === 'no' || c.lastGrade === 'fuzzy' || (c.lapse || 0) >= 2))); };
+  const nCustomWords = () => Object.keys(state.custom.words).length;
+
+  /** 검색어가 들어 있는 패턴 예문(내장+내 패턴). 단어가 단어장에 없어도 예문에서 뜻을 알 수 있게. */
+  function exampleHits(qn, limit = 8) {
+    const out = [], seen = new Set();
+    for (const p of allPatterns()) {
+      for (const e of p.examples.concat(p.quiz.map(q => ({ jp: q.jp, jpr: q.jpr, mean: q.q, kr: q.kr })))) {
+        if (seen.has(e.jp)) continue;
+        if (norm(e.jp + C.readingOf(e.jp, e.jpr) + e.mean + (e.kr || '') + (e.kana || '')).includes(qn)) { seen.add(e.jp); out.push({ p, e }); if (out.length >= limit) return out; }
+      }
+    }
+    return out;
+  }
+  function lookupBox(q) {
+    const t = q.trim();
+    return `<div class="card lookup"><p>「<b>${esc(t)}</b>」, 단어장에 없나요?</p>
+      <a class="btn sec block" href="${dictUrl(t)}" target="_blank" rel="noopener">📖 네이버 일본어사전에서 찾기 ↗</a>
+      <button class="btn block" data-act="word-new" data-q="${esc(t)}">＋ 내 단어장에 추가</button></div>`;
+  }
   function wordRows() {
-    const q = WB.q.trim().toLowerCase();
-    const list = DATA.studyWords.filter(w => {
+    const qn = norm(WB.q);
+    const list = allWords().filter(w => {
+      if (WB.filter === 'mine' && !w.custom) return false;
       if (WB.filter === 'learned' && !state.cards[w.id]) return false;
       if (WB.filter === 'confused' && !isConfused(w.id)) return false;
       if (WB.cat && w.cat !== WB.cat) return false;
-      if (q) {
+      if (qn) {
         const ex = exCard(w);
-        const hay = [w.jp, w.kana, w.kr, w.mean, ex && ex.ex, ex && ex.exMean].join(' ').toLowerCase();
-        if (!hay.includes(q)) return false;
+        if (!norm([w.jp, w.kana, w.kr, w.mean, w.note, ex && ex.ex, ex && C.readingOf(ex.ex, ex.exr), ex && ex.exMean].join(' ')).includes(qn)) return false;
       }
       return true;
     });
-    if (!list.length) return empty(WB.filter === 'confused' ? '헷갈린 단어가 아직 없어요. 복습에서 「헷갈려요」「몰라요」를 고르면 여기에 모여요.' : '찾는 단어가 없어요.');
-    return `<ul class="wlist">${list.map(w => {
-      const c = state.cards[w.id];
-      const st = isConfused(w.id) ? '<i class="dot amber" title="헷갈림"></i>' : c ? '<i class="dot green" title="배움"></i>' : '<i class="dot" title="아직"></i>';
-      return `<li><a href="#/words/${w.id}" class="wrow ${c ? '' : 'todo'}">${st}<span class="w1">${jp(w.jp)}</span><span class="w2">${esc(w.mean)}<small>${[w.kana !== w.jp ? jp(w.kana) : '', krVisible() ? esc(w.kr) : ''].filter(Boolean).join(' · ')}</small></span>${state.flags[w.id] ? '<span class="star">★</span>' : ''}</a></li>`;
-    }).join('')}</ul><p class="tiny muted center">${list.length}개</p>`;
+    let html = '';
+    if (!list.length) {
+      html = empty(qn ? '단어장에서 찾지 못했어요.' : WB.filter === 'confused' ? '헷갈린 단어가 아직 없어요. 복습에서 「헷갈려요」「몰라요」를 고르면 여기에 모여요.' : WB.filter === 'mine' ? '아직 추가한 단어가 없어요. 궁금한 단어를 직접 추가해 보세요.' : '단어가 없어요.');
+    } else {
+      html = `<ul class="wlist">${list.map(w => {
+        const c = state.cards[w.id];
+        const st = isConfused(w.id) ? '<i class="dot amber" title="헷갈림"></i>' : c ? '<i class="dot green" title="배움"></i>' : '<i class="dot" title="아직"></i>';
+        const sub = [w.kana !== w.jp ? jp(w.kana) : '', krVisible() && w.kr ? esc(w.kr) : ''].filter(Boolean).join(' · ');
+        return `<li><a href="#/words/${w.id}" class="wrow ${c ? '' : 'todo'}">${st}<span class="w1">${jp(w.jp)}</span><span class="w2">${esc(w.mean)}${w.custom ? ' <span class="badge-mine">내 단어</span>' : ''}<small>${sub}</small></span>${state.flags[w.id] ? '<span class="star">★</span>' : ''}</a></li>`;
+      }).join('')}</ul><p class="tiny muted center">${list.length}개</p>`;
+    }
+    if (qn) {
+      const hits = exampleHits(qn);
+      if (hits.length) {
+        html += `<h2>예문에서 찾기</h2><ul class="exlist">${hits.map(({ p, e }) => `<li>${speakBtn(e.jp, 'sm')}<div><a class="plink" href="#/patterns/${p.id}">${rb(e.jp, e.jpr)}</a><small>${esc(e.mean)}</small></div></li>`).join('')}</ul>`;
+      }
+      html += lookupBox(WB.q);
+    }
+    return html;
   }
   function viewWords() {
     const cats = [...new Set(DATA.studyWords.map(w => w.cat))];
@@ -560,42 +629,139 @@
       <h3>발음 함정</h3><ul>${t.pronunciation.map(x => `<li><b>${esc(x.type)}</b> ${esc(x.text)}</li>`).join('')}</ul>
       <h3>패턴 공식</h3><ul>${t.formulas.map(x => `<li>${jp(x.frame)} → ${esc(x.mean)}</li>`).join('')}</ul>
       <h3>암기 루틴</h3><ol>${t.routine.map(x => `<li>${esc(x)}</li>`).join('')}</ol></details>`;
+    const chips = [['all', '전체'], ['learned', '배운 것'], ['confused', '헷갈린 단어'], ['mine', `내 단어 ${nCustomWords()}`]];
     return `<main class="page"><h1>단어장</h1>
-      <input id="wq" type="search" placeholder="일본어·뜻·발음 검색" value="${esc(WB.q)}" autocomplete="off">
-      <div class="chips">${[['all', '전체'], ['learned', '배운 것'], ['confused', '헷갈린 단어']].map(([k, l]) => `<button class="chip ${WB.filter === k ? 'on' : ''}" data-act="wf" data-v="${k}">${l}</button>`).join('')}
+      <input id="wq" type="search" placeholder="일본어·뜻·발음·예문 검색" value="${esc(WB.q)}" autocomplete="off">
+      <div class="chips">${chips.map(([k, l]) => `<button class="chip ${WB.filter === k ? 'on' : ''}" data-act="wf" data-v="${k}">${l}</button>`).join('')}
         <select id="wcat" aria-label="분류"><option value="">모든 분류</option>${cats.map(c => `<option ${WB.cat === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
+      <button class="btn sec block" data-act="word-new" data-q="">＋ 내 단어 추가</button>
       <div id="wrows">${wordRows()}</div>${tips}</main>`;
   }
   function viewWordDetail(id) {
     const w = W(id); if (!w) return empty('없는 단어예요');
     const c = state.cards[id];
-    const status = c ? `<p class="muted">복습 ${c.stage}단계 · 다음 ${md(c.due)} · 헷갈린 횟수 ${c.lapse || 0}</p>` : '<p class="muted">아직 배우지 않은 단어예요</p>';
+    const status = c ? `<p class="muted">복습 ${c.stage}단계 · 다음 ${md(c.due)} · 헷갈린 횟수 ${c.lapse || 0}</p>` : `<p class="muted">${w.custom ? '복습 카드에 넣지 않았어요' : '아직 배우지 않은 단어예요'}</p>`;
+    const mine = w.custom ? `<div class="row2"><a class="btn sec" href="#/words/edit/${id}">고치기</a><button class="btn ghost danger" data-act="word-del" data-id="${id}">삭제</button></div>
+      <button class="btn block" data-act="word-srs" data-id="${id}">${c ? '복습에서 빼기' : '복습에 넣기 (내일부터)'}</button>` : '';
     return `<main class="page"><a class="back" href="#/words">← 단어장</a>
       <div class="card q">${wordBody(w, {})}${speakBtn(wordSay(w))}</div>
-      ${status}
-      <button class="btn sec block" data-act="flag" data-id="${id}">${state.flags[id] ? '★ 헷갈림 표시 해제' : '☆ 헷갈리는 단어로 표시'}</button></main>`;
+      ${status}${mine}
+      <button class="btn sec block" data-act="flag" data-id="${id}">${state.flags[id] ? '★ 헷갈림 표시 해제' : '☆ 헷갈리는 단어로 표시'}</button>
+      <a class="btn ghost block" href="${dictUrl(w.jp)}" target="_blank" rel="noopener">📖 사전에서 더 보기 ↗</a></main>`;
+  }
+  function viewWordForm(id) {
+    const c = id ? state.custom.words[id] : null;
+    if (id && !c) return empty('없는 단어예요');
+    const pre = c || PREFILL || {};
+    PREFILL = null;
+    return `<main class="page"><a class="back" href="#/words${id ? '/' + id : ''}">← ${id ? '돌아가기' : '단어장'}</a>
+      <h1>${id ? '내 단어 고치기' : '내 단어 추가'}</h1>
+      <form class="card" data-form="word" data-id="${id || ''}" autocomplete="off">
+        <label class="setlabel" for="f_jp">일본어</label><input id="f_jp" name="jp" required maxlength="40" lang="ja" placeholder="예: 駅" value="${esc(pre.jp || '')}">
+        <label class="setlabel" for="f_kana">읽기 (히라가나) <span class="muted tiny">한자가 있으면 적어 주세요 · 비워도 아는 한자는 자동으로 붙어요</span></label><input id="f_kana" name="kana" maxlength="60" lang="ja" placeholder="예: えき" value="${esc(pre.kana || '')}">
+        <label class="setlabel" for="f_mean">뜻</label><input id="f_mean" name="mean" required maxlength="60" placeholder="예: 역" value="${esc(pre.mean || '')}">
+        <label class="setlabel" for="f_note">메모 (선택)</label><input id="f_note" name="note" maxlength="80" value="${esc(pre.note || '')}">
+        <p class="tiny muted">미리보기: <span id="prevRuby" class="prev">${pre.jp ? rb(pre.jp, rubyFor(pre.jp, pre.kana)) : ''}</span></p>
+        ${id ? '' : '<label class="chk"><input type="checkbox" name="srs" checked> 복습 카드에 넣기 (내일부터 복습에 나와요)</label>'}
+        <button class="btn lg block primary" type="submit">저장</button>
+        <a class="btn ghost block" id="f_dict" href="${dictUrl(pre.jp || pre.mean || '')}" target="_blank" rel="noopener">📖 사전에서 찾아보기 ↗</a>
+      </form></main>`;
+  }
+  const KANA_ONLY = /^[ぁ-ゖァ-ヶー・\s]+$/;
+  function saveWordForm(form) {
+    const f = new FormData(form), id = form.dataset.id;
+    const rec = { jp: (f.get('jp') || '').trim(), kana: (f.get('kana') || '').trim(), mean: (f.get('mean') || '').trim(), note: (f.get('note') || '').trim() };
+    if (!rec.jp || !rec.mean) { toast('일본어와 뜻을 적어 주세요'); return; }
+    if (rec.kana && !KANA_ONLY.test(rec.kana)) { toast('읽기는 히라가나로 적어 주세요'); return; }
+    if (!id && DATA.studyWords.some(w => w.jp === rec.jp) && !confirm('이미 단어장에 있는 단어예요. 그래도 추가할까요?')) return;
+    let target = id;
+    if (id) {
+      Object.assign(state.custom.words[id], rec);
+    } else {
+      target = 'u' + (++state.custom.seq);
+      state.custom.words[target] = Object.assign({ id: target, created: today() }, rec);
+      if (f.get('srs')) C.introduce(state, target, today());
+    }
+    save(); toast(id ? '고쳤어요' : '추가했어요');
+    go('#/words/' + target);
   }
 
   /* ================= 패턴 ================= */
+  function patternMatches(p, qn) {
+    if (!qn) return true;
+    return norm([p.jp, C.readingOf(p.jp, p.jpr), p.mean, p.kr, p.kana].concat(p.examples.map(e => e.jp + C.readingOf(e.jp, e.jpr) + e.mean + (e.kana || ''))).join(' ')).includes(qn);
+  }
+  function patternList() {
+    const qn = norm(PB.q);
+    const row = p => {
+      const tried = p.custom ? false : C.quizIds(p).some(q => state.cards[q]);
+      return `<li><a href="#/patterns/${p.id}" class="prow"><span class="pn">${p.custom ? '내' : p.no}</span><span class="pt">${jp(p.jp)}<small>${esc(p.mean)}</small></span>${tried ? '<i class="dot green" title="연습함"></i>' : ''}</a></li>`;
+    };
+    let html = '', total = 0;
+    DATA.patterns.parts.forEach(pt => {
+      const list = DATA.patterns.patterns.filter(p => p.part === pt.no && patternMatches(p, qn));
+      if (!list.length) return;
+      total += list.length;
+      html += `<section><h2>PART ${pt.no} · ${esc(pt.name)}</h2><ul class="plist">${list.map(row).join('')}</ul></section>`;
+    });
+    const mine = Object.keys(state.custom.patterns).map(customPattern).filter(p => p && patternMatches(p, qn));
+    total += mine.length;
+    if (mine.length || !qn) html += `<section><h2>✏️ 내 패턴</h2>${mine.length ? `<ul class="plist">${mine.map(row).join('')}</ul>` : '<p class="muted tiny">아직 없어요. 여행에서 쓰고 싶은 문장을 직접 추가해 보세요.</p>'}</section>`;
+    if (!qn) html += `<section><h2>🎭 롤플레잉</h2><ul class="plist">${DATA.patterns.roleplays.map(r => `<li><a class="prow" href="#/roleplay/${r.id}"><span class="pn">${r.part}</span><span class="pt">PART ${r.part} · ${esc(partName(r.part))}<small>${r.lines.length}줄 주고받기</small></span></a></li>`).join('')}</ul></section>`;
+    if (qn && !total) html = empty('찾는 패턴이 없어요.') + lookupBox(PB.q);
+    return html;
+  }
   function viewPatterns() {
-    const byPart = DATA.patterns.parts.map(pt => {
-      const list = DATA.patterns.patterns.filter(p => p.part === pt.no);
-      return `<section><h2>PART ${pt.no} · ${esc(pt.name)}</h2><ul class="plist">${list.map(p => {
-        const tried = C.quizIds(p).some(q => state.cards[q]);
-        return `<li><a href="#/patterns/${p.id}" class="prow"><span class="pn">${p.no}</span><span class="pt">${jp(p.jp)}<small>${esc(p.mean)}</small></span>${tried ? '<i class="dot green" title="연습함"></i>' : ''}</a></li>`;
-      }).join('')}</ul></section>`;
-    }).join('');
-    const roles = `<section><h2>🎭 롤플레잉</h2><ul class="plist">${DATA.patterns.roleplays.map(r => `<li><a class="prow" href="#/roleplay/${r.id}"><span class="pn">${r.part}</span><span class="pt">PART ${r.part} · ${esc(partName(r.part))}<small>${r.lines.length}줄 주고받기</small></span></a></li>`).join('')}</ul></section>`;
-    return `<main class="page"><h1>여행 패턴 32</h1>${byPart}${roles}</main>`;
+    return `<main class="page"><h1>여행 패턴 32</h1>
+      <input id="pq" type="search" placeholder="패턴·예문 검색 (일본어/뜻/발음)" value="${esc(PB.q)}" autocomplete="off">
+      <a class="btn sec block" href="#/patterns/new">＋ 내 패턴 추가</a>
+      <div id="prows">${patternList()}</div></main>`;
   }
   function viewPatternDetail(pid) {
-    const p = DATA.patternsById[pid]; if (!p) return empty('없는 패턴이에요');
-    const ui = { kr: true };
+    const p = PAT(pid); if (!p) return empty('없는 패턴이에요');
+    const showKr = krVisible();
+    const mine = p.custom ? `<div class="row2"><a class="btn sec" href="#/patterns/edit/${p.id}">고치기</a><button class="btn ghost danger" data-act="pat-del" data-id="${p.id}">삭제</button></div>` : '';
     return `<main class="page"><a class="back" href="#/patterns">← 패턴</a>
-      <div class="card q"><div class="cat">PART ${p.part} · ${esc(partName(p.part))} · 패턴 ${p.no}</div><div class="bigjp">${jp(p.jp)}</div>${speakBtn(p.jp)}<div class="kr">${esc(p.kr)}</div><div class="mean">${esc(p.mean)}</div></div>
-      <a class="btn lg block primary" href="#/practice/${p.id}">이 패턴 연습하기 ▶</a>
-      <h2>예문</h2><ul class="exlist">${p.examples.map(e => `<li>${speakBtn(e.jp, 'sm')}<div>${jp(e.jp)}<small>${esc(e.mean)}${krVisible() ? ' · ' + esc(e.kr) : ''}</small></div></li>`).join('')}</ul>
-      <h2>퀴즈</h2><ul class="exlist">${p.quiz.map((q, i) => `<li><div>${esc(q.q)}<details><summary>정답 보기</summary>${jp(q.jp)} ${speakBtn(q.jp, 'sm')} ${revBadge(q.by === 'claude')}<small>${esc(q.kr)}</small></details></div></li>`).join('')}</ul></main>`;
+      <div class="card q"><div class="cat">${p.custom ? '내 패턴' : `PART ${p.part} · ${esc(partName(p.part))} · 패턴 ${p.no}`}</div><div class="bigjp">${rb(p.jp, p.jpr)}</div>${speakBtn(p.jp)}${p.kr ? `<div class="kr">${esc(p.kr)}</div>` : ''}<div class="mean">${esc(p.mean)}</div></div>
+      <a class="btn lg block primary" href="#/practice/${p.id}">이 패턴 연습하기 ▶</a>${mine}
+      <h2>예문</h2><ul class="exlist">${p.examples.map(e => `<li>${speakBtn(e.jp, 'sm')}<div>${rb(e.jp, e.jpr)}<small>${esc(e.mean)}${showKr && e.kr ? ' · ' + esc(e.kr) : ''}</small></div></li>`).join('')}</ul>
+      <h2>퀴즈</h2><ul class="exlist">${p.quiz.map(q => `<li><div>${esc(q.q)}<details><summary>정답 보기</summary>${rb(q.jp, q.jpr)} ${speakBtn(q.jp, 'sm')} ${revBadge(q.by === 'claude')}<small>${esc(q.kr || '')}</small></details></div></li>`).join('')}</ul></main>`;
+  }
+  const exRow = (e = {}) => `<div class="exrow"><input name="ex_jp" lang="ja" maxlength="80" placeholder="일본어 예문" value="${esc(e.jp || '')}"><input name="ex_kana" lang="ja" maxlength="120" placeholder="읽기 (히라가나, 선택)" value="${esc(e.kana || '')}"><input name="ex_mean" maxlength="80" placeholder="뜻" value="${esc(e.mean || '')}"><button type="button" class="btn ghost sm" data-act="pat-delrow" aria-label="이 예문 지우기">✕</button></div>`;
+  function viewPatternForm(id) {
+    const c = id ? state.custom.patterns[id] : null;
+    if (id && !c) return empty('없는 패턴이에요');
+    const rows = c ? c.examples : [{}, {}, {}];
+    return `<main class="page"><a class="back" href="#/patterns${id ? '/' + id : ''}">← ${id ? '돌아가기' : '패턴'}</a>
+      <h1>${id ? '내 패턴 고치기' : '내 패턴 추가'}</h1>
+      <form class="card" data-form="pattern" data-id="${id || ''}" autocomplete="off">
+        <label class="setlabel" for="p_jp">패턴 문장 <span class="muted tiny">단어가 바뀌는 자리는 〜로</span></label><input id="p_jp" name="jp" required maxlength="60" lang="ja" placeholder="예: 〜はどこですか" value="${esc(c ? c.jp : '')}">
+        <label class="setlabel" for="p_kana">읽기 (히라가나, 선택)</label><input id="p_kana" name="kana" maxlength="100" lang="ja" value="${esc(c ? c.kana || '' : '')}">
+        <label class="setlabel" for="p_mean">뜻</label><input id="p_mean" name="mean" required maxlength="60" placeholder="예: 〜는 어디예요?" value="${esc(c ? c.mean : '')}">
+        <div class="setlabel">예문 <span class="muted tiny">일본어와 뜻을 짝으로 적어요. 퀴즈(뜻 → 일본어 말하기)로도 쓰여요</span></div>
+        <div id="exrows">${rows.map(exRow).join('')}</div>
+        <button type="button" class="btn sec block" data-act="pat-addrow">＋ 예문 줄 추가</button>
+        <button class="btn lg block primary" type="submit">저장</button>
+      </form></main>`;
+  }
+  function savePatternForm(form) {
+    const f = new FormData(form), id = form.dataset.id;
+    const rec = { jp: (f.get('jp') || '').trim(), kana: (f.get('kana') || '').trim(), mean: (f.get('mean') || '').trim(), examples: [] };
+    if (!rec.jp || !rec.mean) { toast('패턴 문장과 뜻을 적어 주세요'); return; }
+    if (rec.kana && !KANA_ONLY.test(rec.kana)) { toast('읽기는 히라가나로 적어 주세요'); return; }
+    const jps = f.getAll('ex_jp'), kanas = f.getAll('ex_kana'), means = f.getAll('ex_mean');
+    for (let i = 0; i < jps.length; i++) {
+      const e = { jp: jps[i].trim(), kana: (kanas[i] || '').trim(), mean: (means[i] || '').trim() };
+      if (!e.jp && !e.mean && !e.kana) continue;
+      if (!e.jp || !e.mean) { toast(`${i + 1}번째 예문은 일본어와 뜻을 둘 다 적어 주세요`); return; }
+      if (e.kana && !KANA_ONLY.test(e.kana)) { toast(`${i + 1}번째 예문의 읽기는 히라가나로 적어 주세요`); return; }
+      rec.examples.push(e);
+    }
+    if (!rec.examples.length) { toast('예문을 하나 이상 적어 주세요'); return; }
+    let pid = id;
+    if (id) Object.assign(state.custom.patterns[id], rec);
+    else { pid = 'up' + (++state.custom.seq); state.custom.patterns[pid] = Object.assign({ id: pid, created: today() }, rec); }
+    save(); toast(id ? '고쳤어요' : '추가했어요'); go('#/patterns/' + pid);
   }
 
   /* ================= 가나 ================= */
@@ -697,12 +863,13 @@
       <div class="card"><div class="setlabel">글자 크기</div>${seg('fontSize', [['normal', '보통'], ['large', '크게'], ['xlarge', '아주 크게']])}
         <div class="setlabel">한글 발음 표시</div>${seg('krMode', [['show', '항상'], ['auto', '3주차부터 숨김'], ['hide', '숨김']])}
         <div class="setlabel">발음 속도</div>${seg('speed', [['slow', '느리게'], ['normal', '보통'], ['fast', '빠르게']])}
+        ${toggle('furigana', '후리가나 표시', '한자 위에 히라가나 읽기를 달아줘요')}
         ${toggle('autoSpeak', '자동으로 소리 재생', '카드가 나오면 바로 읽어 줘요')}
         ${toggle('kanaWarmup', '가나 워밍업', '가나 표·퀴즈 탭을 보여줘요')}
         ${toggle('showReview', '「검수 중」 표시', 'Claude가 채운 내용에 작은 표시')}</div>
       <div class="card"><div class="setrow"><div><b>일본어 음성</b><small>${vtxt}</small></div><a class="btn sec sm" href="#/voice">확인</a></div></div>
       <div class="card"><div class="setlabel">학습 기록 (이 폰에 저장)</div>
-        <p class="tiny muted">배운 단어 ${C.totalLearned(DATA, state)}개 · 기록 ${state.log.length}일</p>
+        <p class="tiny muted">배운 단어 ${C.totalLearned(DATA, state)}개 · 기록 ${state.log.length}일 · 내 단어 ${nCustomWords()}개 · 내 패턴 ${Object.keys(state.custom.patterns).length}개</p>
         <div class="row2"><button class="btn sec" data-act="export">내보내기</button><label class="btn sec filebtn">가져오기<input type="file" accept="application/json,.json" data-act="import" hidden></label></div>
         <button class="btn ghost block danger" data-act="reset">기록 전체 지우기</button></div>
       <div class="card about"><b>잇쇼니 니홍고 ${APP_VERSION}</b>
@@ -726,7 +893,7 @@
       role: () => setRole(el.dataset.role),
       start: () => startToday(),
       exit: () => { tickTime(); save(); toast('진행 상황은 저장됐어요'); const back = SESS && SESS.returnTo; if (SESS && SESS.kind !== 'today') SESS = null; go(back || '#/today'); },
-      reveal: () => { SESS.ui.reveal = true; tickTime(); render({ keepScroll: true }); const it = SESS.items[SESS.i]; if (it.kind === 'quiz' && state.settings.autoSpeak) speakOrWarn(C.quizOf(DATA, it.qid).q.jp); },
+      reveal: () => { SESS.ui.reveal = true; tickTime(); render({ keepScroll: true }); const it = SESS.items[SESS.i]; if ((it.kind === 'quiz' || it.kind === 'cquiz') && state.settings.autoSpeak) speakOrWarn(it.kind === 'cquiz' ? PAT(it.pid).quiz[it.idx].jp : C.quizOf(DATA, it.qid).q.jp); },
       'show-kr': () => { SESS.ui.kr = true; render({ keepScroll: true }); },
       grade: () => gradeItem(el.dataset.g),
       learned: () => { const it = SESS.items[SESS.i]; C.introduce(state, it.id, SESS.date); advance(); },
@@ -742,6 +909,26 @@
       install: async () => { if (!deferredInstall) return; deferredInstall.prompt(); await deferredInstall.userChoice.catch(() => { }); deferredInstall = null; render({ keepScroll: true }); },
       'hide-install': () => { state.settings.installTipHidden = true; save(); render({ keepScroll: true }); },
       wf: () => { WB.filter = el.dataset.v; render({ keepScroll: true }); },
+      'word-new': () => { const q = el.dataset.q || ''; PREFILL = q ? (isJa(q) ? { jp: q } : { mean: q }) : null; go('#/words/new'); },
+      'word-del': () => {
+        const id = el.dataset.id; if (!confirm('이 단어를 삭제할까요? 복습 기록도 함께 지워져요.')) return;
+        delete state.custom.words[id]; delete state.cards[id]; delete state.flags[id]; save(); toast('삭제했어요'); go('#/words');
+      },
+      'word-srs': () => {
+        const id = el.dataset.id;
+        if (state.cards[id]) delete state.cards[id]; else C.introduce(state, id, today());
+        save(); render({ keepScroll: true });
+      },
+      'pat-del': () => {
+        const id = el.dataset.id; if (!confirm('이 패턴을 삭제할까요?')) return;
+        delete state.custom.patterns[id]; save(); toast('삭제했어요'); go('#/patterns');
+      },
+      'pat-addrow': () => {
+        const box = $('#exrows'); if (!box) return;
+        if (box.children.length >= 12) { toast('예문은 12개까지예요'); return; }
+        box.insertAdjacentHTML('beforeend', exRow()); box.lastElementChild.querySelector('input').focus();
+      },
+      'pat-delrow': () => { const row = el.closest('.exrow'); if (row) row.remove(); },
       flag: () => { const id = el.dataset.id; if (state.flags[id]) delete state.flags[id]; else state.flags[id] = true; save(); render({ keepScroll: true }); },
       ktab: () => { KANA_TAB = el.dataset.v; render({ keepScroll: true }); },
       kquiz: () => startKanaQuiz(el.dataset.scope),
@@ -755,7 +942,7 @@
       'voice-recheck': () => { Speech.pick(); render({ keepScroll: true }); toast(Speech.status() === 'ok' ? '일본어 음성을 찾았어요' : '아직 못 찾았어요'); },
       export: () => { download(`isshoni-${state.user.name || 'user'}-${today()}.json`, JSON.stringify(state, null, 2)); toast('파일로 저장했어요'); },
       reset: () => {
-        if (!confirm('학습 기록을 모두 지웁니다. 되돌릴 수 없어요.\n먼저 「내보내기」로 백업했나요?')) return;
+        if (!confirm('학습 기록과 내가 추가한 단어·패턴을 모두 지웁니다. 되돌릴 수 없어요.\n먼저 「내보내기」로 백업했나요?')) return;
         if (!confirm('정말 지울까요?')) return;
         try { localStorage.setItem(KEY + '.before-reset', JSON.stringify(state)); } catch (e) { /* 무시 */ }
         state = C.defaultState(); save(); SESS = null; location.hash = '#/welcome'; render();
@@ -764,6 +951,8 @@
     if (A[act]) { e.preventDefault(); A[act](); }
   });
   document.addEventListener('submit', e => {
+    const wf = e.target.closest('[data-form]');
+    if (wf) { e.preventDefault(); if (wf.dataset.form === 'word') saveWordForm(wf); else savePatternForm(wf); return; }
     const f = e.target.closest('[data-act="role-other"]'); if (!f) return;
     e.preventDefault();
     const name = ($('#otherName').value || '').trim();
@@ -772,6 +961,12 @@
   });
   document.addEventListener('input', e => {
     if (e.target.id === 'wq') { WB.q = e.target.value; $('#wrows').innerHTML = wordRows(); }
+    if (e.target.id === 'pq') { PB.q = e.target.value; $('#prows').innerHTML = patternList(); }
+    if (e.target.form && e.target.form.dataset.form === 'word') {       // 후리가나 미리보기 + 사전 링크
+      const f = e.target.form, pv = $('#prevRuby'), jpv = f.jp.value.trim();
+      if (pv) pv.innerHTML = jpv ? rb(jpv, rubyFor(jpv, f.kana.value)) : '';
+      const d = $('#f_dict'); if (d) d.href = dictUrl(jpv || f.mean.value.trim());
+    }
     if (e.target.id === 'uname') { state.user.name = e.target.value.trim().slice(0, 12); save(); }
   });
   document.addEventListener('change', e => {

@@ -113,4 +113,30 @@ ok(so.includes('치') || so.includes('키'), 'confusion partner appears (さ↔�
 const picked = Core.pickKana(kh.filter(x => x.type === 'basic'), { あ: { ok: 0, ng: 9 } }, 46);
 ok(new Set(picked.map(x => x.k)).size === 46, 'pickKana no duplicates');
 
+// 후리가나: 직접 적은 읽기 정렬 / 사전 기반 자동 / 검색용 읽기
+ok(Core.autoRuby('食べ物', 'たべもの') === '食[た]べ物[もの]', 'autoRuby okurigana');
+ok(Core.autoRuby('お金', 'おかね') === 'お金[かね]', 'autoRuby prefix');
+ok(Core.autoRuby('こんにちは', 'こんにちは') === null && Core.autoRuby('駅', '') === null, 'autoRuby none');
+ok(Core.autoRuby('駅', 'エキ') === '駅[えき]', 'autoRuby katakana reading');
+const lex = Core.buildLexicon(data);
+ok(lex.size > 150, 'lexicon size ' + lex.size);
+ok(Core.lexRuby('出口はどこですか', lex) === '出口[でぐち]はどこですか', 'lexRuby known word');
+ok(Core.lexRuby('駅前', lex) === null, 'lexRuby: 한 글자 단어는 다른 한자와 붙어 있으면 건드리지 않음');
+ok(Core.lexRuby('醤油', lex) === null, 'lexRuby unknown kanji untouched');
+ok(Core.readingOf('駅までいくらですか？', '駅[えき]までいくらですか？') === 'えきまでいくらですか？', 'readingOf');
+ok(Core.stripRuby('駅[えき]まで') === '駅まで', 'stripRuby');
+ok(data.patterns.patterns.every(p => p.examples.every(e => !Core.hasKanji(e.jp) || e.jpr)), '모든 패턴 예문의 한자에 후리가나');
+
+// 내 단어(u1): 복습 카드로 들어가고 기한이 되면 복습에 나온다. 단어가 지워지면 카드는 무시된다
+{
+  const st = Core.defaultState();
+  st.custom.words.u1 = { id: 'u1', jp: '醤油', kana: 'しょうゆ', mean: '간장' };
+  Core.introduce(st, 'u1', '2026-10-05');
+  ok(Core.buildPlan(data, st, '2026-10-06').review.includes('u1'), '내 단어가 복습에 나옴');
+  ok(Core.totalLearned(data, st) === 0, '내 단어는 275개 진도에 세지 않음');
+  delete st.custom.words.u1;
+  ok(!Core.buildPlan(data, st, '2026-10-06').review.includes('u1'), '삭제한 내 단어는 복습에서 빠짐');
+  ok(Core.migrate({ cards: {} }).custom.words && Core.migrate({ custom: { words: { u1: {} } } }).custom.patterns, '마이그레이션: custom 기본값');
+}
+
 console.log(`OK: ${n} checks passed`);

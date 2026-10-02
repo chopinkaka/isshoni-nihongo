@@ -69,3 +69,9 @@
 - `log`는 날짜당 1줄(덮어쓰기)이라 2차 동기화 때 중복 전송을 막기 쉽다. `pendingSync`는 아직 비어 있음.
 - 미구현(2차 이후): Apps Script 진도 공유, '함께' 화면, 카톡 보내기, 마쓰야마 일정 롤플레이. 패턴 '놓친 날 따라잡기'는 패턴 탭의 「이 패턴 연습하기」로 직접 한다.
 - 실기기에서 확인이 필요한 것: 갤럭시 크롬의 일본어 TTS 음성, 홈 화면 설치, 서비스 워커 오프라인 동작.
+
+## 후리가나 · 내 단어/패턴 (2026-10-02)
+- 후리가나: `jpr`(패턴·예문·퀴즈·롤플레잉 줄·한자 단어 표제어)와 `exr`(N5 예문). 표기는 `駅[えき]まで`(한자 덩어리 뒤 [히라가나]), `[..]`를 지우면 `jp`/`ex`와 같아야 한다(`validate_data.py`가 검사). 음성 읽기·검색 원문은 계속 `jp`. `tools/build_furigana.py`가 생성하고 읽기 규칙은 `tools/furigana_overrides.json`. 설정 `furigana`(기본 켬)로 끌 수 있다.
+- 내 단어/패턴: `state.custom = {words:{u1:{jp,kana,mean,note}}, patterns:{up2:{jp,kana,mean,examples:[{jp,kana,mean}]}}, seq}`. 내 단어는 복습 카드(`cards.u1`)로 들어가지만 275개 진도(`totalLearned`)에는 세지 않는다. 내 패턴은 SRS 없이 연습만(예문 따라 말하기 → 뜻→일본어 퀴즈). 읽기를 안 적으면 `Core.buildLexicon`(데이터에서 모은 읽기 사전)으로 아는 한자만 자동 후리가나.
+- 검색: 히라가나/가타카나 구분 없음, 읽기·예문까지 검색. 못 찾으면 네이버 일본어사전 링크(`ja.dict.naver.com/#/search?query=`)와 '내 단어로 추가'.
+

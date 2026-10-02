@@ -25,7 +25,7 @@ const Core = (() => {
 
   /* ---------- 저장 구조 ---------- */
   function defaultSettings() {
-    return { fontSize: 'large', krMode: 'show', speed: 'normal', autoSpeak: true, kanaWarmup: false, showReview: true };
+    return { fontSize: 'large', krMode: 'show', speed: 'normal', autoSpeak: true, kanaWarmup: false, showReview: true, furigana: true };
   }
   function defaultState() {
     return {
@@ -38,6 +38,7 @@ const Core = (() => {
       pendingSync: [],    // 2차(Apps Script)에서 사용
       daily: {},          // date → {finished, ms, reviewCount, newTarget, patternDone, roleplayDone, extraSeen, kanaDone}
       kana: { stats: {}, quizzes: [], passed: false },
+      custom: { words: {}, patterns: {}, seq: 0 },   // 내가 추가한 단어(u1…)·패턴(up1…)
     };
   }
   /** 역할별 기본 설정. */
@@ -57,6 +58,8 @@ const Core = (() => {
     s.settings = Object.assign(defaultSettings(), s.settings);
     s.user = Object.assign(def.user, s.user);
     s.kana = Object.assign(def.kana, s.kana);
+    s.custom = Object.assign(def.custom, s.custom);
+    s.custom.words = s.custom.words || {}; s.custom.patterns = s.custom.patterns || {};
     if (typeof s.schemaVersion !== 'number') s.schemaVersion = SCHEMA_VERSION;
     return s;
   }
@@ -161,7 +164,7 @@ const Core = (() => {
 
     // 복습 단계: 기한이 된 카드(패턴 단계에서 다루는 퀴즈는 제외). 오래 밀린 것·자주 틀린 것 먼저.
     const due = Object.entries(state.cards)
-      .filter(([id, c]) => c.due <= date && !skip.has(id) && (isQuizId(id) ? !!quizOf(data, id) : !!data.wordsById[id]))
+      .filter(([id, c]) => c.due <= date && !skip.has(id) && (isQuizId(id) ? !!quizOf(data, id) : (!!data.wordsById[id] || !!(state.custom && state.custom.words[id]))))
       .sort((a, b) => (a[1].due < b[1].due ? -1 : a[1].due > b[1].due ? 1 : (b[1].lapse || 0) - (a[1].lapse || 0) || (a[0] < b[0] ? -1 : 1)))
       .map(([id]) => id);
     plan.reviewDueTotal = due.length;
@@ -235,6 +238,70 @@ const Core = (() => {
     });
   }
 
+  /* ---------- 후리가나 ---------- */
+  const KANJI = '\u4e00-\u9fff\u3005\u303b';
+  const hira = str => str.replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
+  const hasKanji = str => new RegExp(`[${KANJI}]`).test(str || '');
+  const escRe = str => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  /** 한자+오쿠리가나 표기(jp)와 읽기(kana)로 `漢字[かんじ]` 표기를 만든다. 정렬이 안 되면 통째로 붙인다. 한자가 없거나 읽기가 없으면 null. */
+  function autoRuby(jp, kana) {
+    kana = hira((kana || '').trim());
+    if (!hasKanji(jp) || !kana) return null;
+    const runs = jp.match(new RegExp(`[${KANJI}]+|[^${KANJI}]+`, 'g')) || [];
+    const pat = '^' + runs.map(r => (hasKanji(r) ? '(.+?)' : escRe(hira(r)))).join('') + '$';
+    const m = kana.match(new RegExp(pat));
+    if (!m) return `${jp}[${kana}]`;
+    let gi = 1;
+    return runs.map(r => (hasKanji(r) ? `${r}[${m[gi++]}]` : r)).join('');
+  }
+  const stripRuby = str => String(str || '').replace(/\[[^\]]*\]/g, '');
+  /** 후리가나 → 히라가나 전체 읽기 (검색용): 駅[えき]まで → えきまで */
+  const readingOf = (jp, jpr) => (jpr ? jpr.replace(new RegExp(`[${KANJI}]+\\[([^\\]]+)\\]`, 'g'), '$1') : (jp || ''));
+
+  /** 앱이 이미 아는 한자 단어의 읽기 사전(패턴·예문의 후리가나 + 한자만으로 된 단어 표제어). 사용자가 읽기를 안 적은 한자에 자동으로 붙인다. */
+  function buildLexicon(data) {
+    const cnt = {}, heads = new Set();
+    const add = (k, r, w) => { cnt[k] = cnt[k] || {}; cnt[k][r] = (cnt[k][r] || 0) + w; };
+    const scan = str => {
+      if (!str) return;
+      const re = new RegExp(`([${KANJI}]+)\\[([^\\]]+)\\]`, 'g'); let m;
+      while ((m = re.exec(str))) add(m[1], m[2], 1);
+    };
+    data.patterns.patterns.forEach(p => { scan(p.jpr); p.examples.forEach(e => scan(e.jpr)); p.quiz.forEach(q => scan(q.jpr)); });
+    data.patterns.roleplays.forEach(r => r.lines.forEach(l => scan(l.jpr)));
+    const kanjiOnly = new RegExp(`^[${KANJI}]+$`);
+    data.words.words.forEach(w => {
+      scan(w.exr);
+      if (kanjiOnly.test(w.jp) && w.kana && !/[・/\s]/.test(w.kana)) { add(w.jp, hira(w.kana), 5); heads.add(w.jp); }
+    });
+    const lex = new Map();
+    Object.entries(cnt).forEach(([k, rs]) => {
+      if (k.length === 1 && !heads.has(k)) return;      // 한 글자는 문맥에 따라 읽기가 달라서 표제어일 때만
+      lex.set(k, Object.entries(rs).sort((a, b) => b[1] - a[1])[0][0]);
+    });
+    return lex;
+  }
+  /** 읽기를 모르는 문장에 사전으로 아는 한자만 후리가나를 붙인다. 붙은 게 없으면 null. 한 글자 단어는 다른 한자와 붙어 있지 않을 때만. */
+  function lexRuby(text, lex) {
+    const isK = ch => hasKanji(ch);
+    let out = '', i = 0, any = false;
+    while (i < text.length) {
+      if (!isK(text[i])) { out += text[i++]; continue; }
+      let j = i; while (j < text.length && isK(text[j])) j++;
+      let k = i;
+      while (k < j) {
+        let hit = null;
+        for (let e = j; e > k; e--) {
+          const key = text.slice(k, e);
+          if (lex.has(key) && (key.length > 1 || (k === i && e === j))) { hit = [key, e]; break; }
+        }
+        if (hit) { out += `${hit[0]}[${lex.get(hit[0])}]`; k = hit[1]; any = true; } else { out += text[k++]; }
+      }
+      i = j;
+    }
+    return any ? out : null;
+  }
+
   /* ---------- 가나 퀴즈 ---------- */
   /** pool: 문제 후보 [{k,kr,ro,type}]. 헷갈리는 짝의 읽기를 보기에 우선 넣는다. */
   function kanaOptions(target, pool, confusions, rng = Math.random, n = 4) {
@@ -269,7 +336,7 @@ const Core = (() => {
     introduce, grade,
     indexData, isQuizId, quizPid, quizIds, quizOf, dayInfo,
     newWordTarget, buildPlan, planRemaining, totalLearned, computeStreak, weekStrip, dayDone,
-    kanaOptions, pickKana,
+    kanaOptions, pickKana, autoRuby, hasKanji, stripRuby, hira, readingOf, buildLexicon, lexRuby,
   };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = Core;

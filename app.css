@@ -199,3 +199,36 @@ select { min-height: 2.6rem; border-radius: 1.3rem; border: 1.5px solid var(--li
 #toast { position: fixed; left: 50%; bottom: calc(5.4rem + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(1rem); background: #2a2522; color: #fff; padding: .6rem 1rem; border-radius: 1.5rem; font-size: .88rem; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; max-width: 90vw; text-align: center; z-index: 30; }
 #toast.show { opacity: 1; transform: translateX(-50%); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* 후리가나 */
+ruby { ruby-position: over; }
+rt { font-size: max(.5em, 11px); font-weight: 500; color: var(--muted); letter-spacing: 0; line-height: 1.1; }
+.bigjp ruby rt { font-size: max(.5em, 13px); color: var(--accent); }
+.patline { font-size: 1.05rem; line-height: 2; color: var(--muted); margin-bottom: .2rem; }
+.patline rt { font-size: max(.55em, 11px); }
+.bigjp:has(ruby) { line-height: 1.75; }
+.exlist ruby, .wrow ruby { ruby-position: over; }
+.exlist [lang="ja"], .ex .jpline, .rl { line-height: 1.9; }
+
+/* 내 단어 / 내 패턴 / 검색 보조 */
+.badge-mine { display: inline-block; font-size: .62rem; padding: .05rem .4rem; border-radius: 1rem; background: var(--accent-soft); color: var(--accent); vertical-align: middle; font-weight: 700; }
+.lookup { text-align: center; border-style: dashed; }
+.lookup p { margin-top: 0; }
+.plink { color: var(--text); text-decoration: none; font-weight: 600; font-size: 1.1rem; }
+.prev { font-size: 1.3rem; color: var(--text); }
+.chk { display: flex; align-items: center; gap: .6rem; margin: .8rem 0; }
+.chk input { width: 1.4rem; height: 1.4rem; min-height: 0; flex: none; }
+.exrow { display: grid; grid-template-columns: 1fr auto; gap: .4rem; margin: .5rem 0; padding: .6rem; background: var(--bg); border-radius: .8rem; }
+.exrow input { grid-column: 1; }
+.exrow button { grid-column: 2; grid-row: 1; align-self: start; }
+form.card .setlabel { margin-top: .9rem; }
+form.card .setlabel:first-child { margin-top: 0; }
+
+/* 넘침 방지: 일본어는 어디서든 줄바꿈(한글용 keep-all 해제), flex 자식은 줄어들 수 있게 */
+[lang="ja"] { word-break: normal; overflow-wrap: anywhere; }
+.exlist li > div, .wrow .w2, .prow .pt, .plan-list li > div { min-width: 0; overflow-wrap: anywhere; }
+.wrow .w1 { flex: none; max-width: 45%; overflow-wrap: anywhere; min-width: 3rem; }
+.row2 > * { min-width: 0; }
+.row2 .btn { padding-inline: .4rem; text-align: center; }
+.qgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.qgrid > * { min-width: 0; padding-inline: .4rem; text-align: center; }
