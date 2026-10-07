@@ -69,7 +69,7 @@ ok(totalNew === 275, '275 words introduced (밀린 단어 따라잡기 포함), 
 { // 성실히 해도 월요일 복습이 몰리는 날엔 새 단어가 줄어 몇 개가 토요일로 넘어간다 — 12/19(토)까지는 275개가 끝나야 한다
   const by = d => Object.entries(s.cards).filter(([id, c]) => data.wordsById[id] && c.intro <= d).length;
   console.log('  12/18까지', by('2026-12-18'), '개, 12/19까지', by('2026-12-19'), '개 학습');
-  ok(by('2026-12-19') === 275, '12/19까지 275개 완료: ' + by('2026-12-19'));
+  ok(by('2026-12-18') === 275, '12/18(1회독 완료일)까지 275개 완료: ' + by('2026-12-18'));
 }
 ok(Core.totalLearned(data, s) === 275, 'totalLearned 275');
 ok(Object.keys(s.cards).filter(Core.isQuizId).length === 94, '94 quiz cards');
@@ -78,14 +78,51 @@ console.log('  성실 시뮬레이션: 하루 최대 복습 카드', maxReview, 
 ok(maxReview <= Core.REVIEW_CAP, 'review cap');
 ok(Core.computeStreak(data, s, '2027-01-23') > 10, 'streak counts through rest days: ' + Core.computeStreak(data, s, '2027-01-23'));
 
-// 밀린 날: 10/5만 하고 10/8에 접속 → 밀린 단어는 앞에서부터, 복습 우선
+// 밀린 날: 10/5만 하고 10/8에 접속 → 지난 날짜 분량이 오늘 분량에 합쳐진다(하루 최대 8개)
 s = Core.defaultState();
 let p5 = Core.buildPlan(data, s, '2026-10-05');
 p5.newIds.forEach(id => Core.grade(s, id, 'know', '2026-10-05'));
 let p8 = Core.buildPlan(data, s, '2026-10-08');
-ok(p8.newIds.join() === 'a006,a007,a008,a009,a010', '밀린 날: 안 배운 단어를 순서대로');
-ok(p8.backlogNew === 5 + 0 || p8.backlogNew >= 5, 'backlog reported: ' + p8.backlogNew);
+ok(p8.newIds.join() === 'a006,a007,a008,a009,a010,a011,a012,a013', '밀린 날: 밀린 단어를 앞에서부터 최대 8개: ' + p8.newIds);
+ok(p8.newCarry === 8 && p8.backlogNew === 7, 'newCarry/backlog: ' + p8.newCarry + '/' + p8.backlogNew);
 ok(p8.review.includes('a001'), '기한 지난 카드가 복습에 포함');
+// '오늘 것만 하기'
+s.daily['2026-10-08'] = { onlyToday: true };
+let p8o = Core.buildPlan(data, s, '2026-10-08');
+ok(p8o.newIds.join() === 'a016,a017,a018,a019,a020' && p8o.newCarry === 0 && p8o.backlogNew === 10, "오늘 것만: " + p8o.newIds + ' / 밀린 ' + p8o.backlogNew);
+delete s.daily['2026-10-08'];
+
+// 어제(화)만 건너뜀: 월 완료 → 수(10/7)
+{
+  const t = Core.defaultState();
+  const a = Core.buildPlan(data, t, '2026-10-05'); a.newIds.forEach(id => Core.grade(t, id, 'know', '2026-10-05')); a.pattern.quizIds.forEach(q => Core.grade(t, q, 'know', '2026-10-05'));
+  t.daily['2026-10-05'] = { finished: true, patternDone: true };
+  const w = Core.buildPlan(data, t, '2026-10-07');
+  ok(w.newIds.join() === 'a006,a007,a008,a009,a010,a011,a012,a013' && w.newCarry === 5 && w.backlogNew === 2, '10/7: 어제 분량 5 + 오늘 3: ' + w.newIds);
+  ok(!w.extraPattern && w.pattern.pids[0] === 'p02', '화요일은 패턴 복습일이라 놓쳐도 보충 없음');
+  ok(Core.computeStreak(data, t, '2026-10-07') === 1, '하루 놓쳐도 연속이 끊기지 않음(10/5 하나만 센다): ' + Core.computeStreak(data, t, '2026-10-07'));
+  t.daily['2026-10-07'] = { finished: true };
+  ok(Core.computeStreak(data, t, '2026-10-07') === 2, '월·수 완료 → 연속 2일');
+}
+// 처음 시작이 늦음: 10/5·10/6을 통째로 놓치고 10/7에 시작 → 놓친 새 패턴 p01이 오늘 패턴(p02) 앞에 얹힘, 퀴즈는 복습에서 중복 제외
+{
+  const t = Core.defaultState();
+  const w = Core.buildPlan(data, t, '2026-10-07');
+  ok(w.extraPattern && w.extraPattern.pids[0] === 'p01' && w.pattern.pids[0] === 'p02', '놓친 새 패턴 p01 + 오늘 p02');
+  ok(w.newIds.length === 8 && w.newIds[0] === 'a001', '10/7 늦은 시작: 새 단어 8개');
+  Core.grade(t, 'p01q1', 'know', '2026-10-07');
+  ok(!Core.buildPlan(data, t, '2026-10-07').extraPattern, '퀴즈를 시작하면 더 이상 놓친 패턴이 아님');
+  const t2 = Core.defaultState(); t2.daily['2026-10-07'] = { onlyToday: true };
+  ok(!Core.buildPlan(data, t2, '2026-10-07').extraPattern, '오늘 것만이면 놓친 패턴 없음');
+  ok(Core.planRemaining(w) >= 3, 'planRemaining counts extraPattern');
+}
+// 연속 일수: 연달아 이틀 놓치면 끊김
+{
+  const t = Core.defaultState();
+  t.daily['2026-10-05'] = { finished: true };      // 월 완료, 화·수 놓침, 목 완료
+  t.daily['2026-10-08'] = { finished: true };
+  ok(Core.computeStreak(data, t, '2026-10-08') === 1, '연달아 이틀(화·수) 놓치면 끊김: ' + Core.computeStreak(data, t, '2026-10-08'));
+}
 
 // 복습이 많으면 새 단어를 줄인다
 ok(Core.newWordTarget(5, 30) === 5 && Core.newWordTarget(5, 45) === 4 && Core.newWordTarget(5, 80) === 1, 'newWordTarget');

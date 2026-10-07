@@ -6,6 +6,7 @@ const Core = (() => {
   const SCHEMA_VERSION = 1;
   const INTERVALS = [1, 3, 7, 14, 30];      // SRS 5단계 간격(일)
   const REVIEW_CAP = 40;                    // 하루 복습 카드 상한(약 8분)
+  const MAX_NEW = 8;                        // 밀린 단어를 합쳐도 하루 새 단어는 8개까지
   const DOW_KO = ['일', '월', '화', '수', '목', '금', '토'];
 
   /* ---------- 날짜 (모두 로컬 날짜 'YYYY-MM-DD') ---------- */
@@ -137,7 +138,8 @@ const Core = (() => {
     const plan = {
       date, day, type: day.type, week: day.week,
       review: [], reviewDueTotal: 0, newIds: [], newTarget: 0, newIntroducedToday: 0, backlogNew: 0,
-      extra: [], pattern: null, roleplay: null, finished: !!daily.finished,
+      extra: [], pattern: null, extraPattern: null, roleplay: null, finished: !!daily.finished,
+      newCarry: 0, onlyToday: !!daily.onlyToday,
     };
     const studyLike = day.type === 'study' || day.type === 'saturday' || day.type === 'review';
     const optionalRest = day.type === 'rest';
@@ -160,7 +162,21 @@ const Core = (() => {
       plan.pattern = { mode: 'rally', pids: [], quizIds: randomQuizIds(data, date, day.phase === '여행 실전' ? 6 : 8), examples: false };
     }
     if (plan.pattern) patternQuizIds = plan.pattern.quizIds;
-    const skip = new Set(patternQuizIds);
+    // 놓친 날의 '새 패턴'은 하루 1개씩 오늘 패턴 앞에 얹는다(복습 패턴은 퀴즈 카드가 SRS에 있으므로 따로 보충하지 않음).
+    if (day.type === 'study' && !daily.onlyToday) {
+      const todayPid = plan.pattern && plan.pattern.mode === 'new' ? plan.pattern.pids[0] : null;
+      for (const d of data.schedule.days) {
+        if (d.date >= date) break;
+        if (d.type === 'study' && d.pattern && d.pattern.mode === 'new' && d.pattern.id !== todayPid) {
+          const p = data.patternsById[d.pattern.id];
+          if (!quizIds(p).some(q => state.cards[q])) {
+            plan.extraPattern = { mode: 'new', pids: [p.id], quizIds: quizIds(p), examples: true, catchUp: true };
+            break;
+          }
+        }
+      }
+    }
+    const skip = new Set(patternQuizIds.concat(plan.extraPattern ? plan.extraPattern.quizIds : []));
 
     // 복습 단계: 기한이 된 카드(패턴 단계에서 다루는 퀴즈는 제외). 오래 밀린 것·자주 틀린 것 먼저.
     const due = Object.entries(state.cards)
@@ -176,20 +192,28 @@ const Core = (() => {
     if (studyLike) {
       const scheduled = [];
       data.schedule.days.forEach(d => { if (d.type === 'study' && d.date <= date) scheduled.push(...d.newWords); });
-      const pending = scheduled.filter(id => !state.cards[id]);
+      const earlier = new Set(); data.schedule.days.forEach(d => { if (d.type === 'study' && d.date < date) d.newWords.forEach(id => earlier.add(id)); });
+      const pendingAll = scheduled.filter(id => !state.cards[id]);
+      // '오늘 것만 하기'를 고르면 지난 날짜 분량은 건너뛴다(밀린 채로 남는다)
+      const only = !!daily.onlyToday && day.type === 'study';
+      const pending = only ? pendingAll.filter(id => !earlier.has(id)) : pendingAll;
+      const overdue = pending.filter(id => earlier.has(id));
       const base = data.schedule.rules.newWordsPerDay || 5;
       plan.newIntroducedToday = Object.entries(state.cards).filter(([id, c]) => c.intro === date && data.wordsById[id]).length;
       let target;
       if (daily.newTarget != null) target = daily.newTarget;
-      else if (day.type === 'study') target = newWordTarget(base, due.length);
-      else if (day.type === 'saturday') target = due.length <= 30 ? 3 : 0;
+      else if (day.type === 'study') {
+        target = newWordTarget(base, due.length);
+        // 복습이 많지 않으면 밀린 단어를 오늘 분량에 합친다(하루 MAX_NEW개까지)
+        if (target === base && overdue.length) target = Math.min(MAX_NEW, base + overdue.length);
+      }
+      else if (day.type === 'saturday') target = due.length <= 30 ? 5 : 0;
       else target = newWordTarget(base, due.length);
       plan.newTarget = target;
       const remain = Math.max(0, target - plan.newIntroducedToday);
       plan.newIds = pending.slice(0, remain);
-      // 밀린 새 단어: 오늘 배울 목록에 들지 않은, 이미 지난 날짜 분량
-      const earlier = new Set(); data.schedule.days.forEach(d => { if (d.type === 'study' && d.date < date) d.newWords.forEach(id => earlier.add(id)); });
-      plan.backlogNew = pending.filter(id => earlier.has(id) && !plan.newIds.includes(id)).length;
+      plan.newCarry = plan.newIds.filter(id => earlier.has(id)).length;      // 오늘 목록 중 지난 날짜 분량
+      plan.backlogNew = pendingAll.filter(id => !plan.newIds.includes(id)).length;   // 아직 못 배운 채 남는 단어
       if (day.type === 'study') plan.extra = (day.extraReview || []).filter(id => !(daily.extraSeen || []).includes(id));
     }
     if ((day.type === 'saturday' || (day.type === 'review' && day.phase === '여행 실전')) && !daily.roleplayDone) {
@@ -203,7 +227,7 @@ const Core = (() => {
   }
   /** 남은 일이 있는가 */
   function planRemaining(plan) {
-    return plan.review.length + plan.newIds.length + plan.extra.length + (plan.pattern ? 1 : 0) + (plan.roleplay ? 1 : 0);
+    return plan.review.length + plan.newIds.length + plan.extra.length + (plan.pattern ? 1 : 0) + (plan.extraPattern ? 1 : 0) + (plan.roleplay ? 1 : 0);
   }
 
   /* ---------- 진도 요약 ---------- */
@@ -212,11 +236,13 @@ const Core = (() => {
   function dayDone(state, d) { const x = state.daily[d]; return !!(x && (x.finished || x.kanaDone)); }
   function computeStreak(data, state, today) {
     const first = data.schedule.days[0].date;
-    let d = today, n = 0;
-    if (!dayDone(state, d)) d = addDays(d, -1);
+    let d = today, n = 0, miss = 0;
+    if (!dayDone(state, d)) d = addDays(d, -1);     // 오늘 아직 안 했어도 어제까지의 연속은 유지
     while (d >= first) {
       if (dayInfo(data, d).type === 'rest') { d = addDays(d, -1); continue; }
-      if (dayDone(state, d)) { n++; d = addDays(d, -1); } else break;
+      if (dayDone(state, d)) { n++; miss = 0; }
+      else if (++miss >= 2) break;                  // 하루 놓친 건 봐주고, 연달아 이틀 놓치면 끊김
+      d = addDays(d, -1);
     }
     return n;
   }
@@ -335,7 +361,7 @@ const Core = (() => {
     defaultSettings, defaultState, presetFor, migrate,
     introduce, grade,
     indexData, isQuizId, quizPid, quizIds, quizOf, dayInfo,
-    newWordTarget, buildPlan, planRemaining, totalLearned, computeStreak, weekStrip, dayDone,
+    MAX_NEW, newWordTarget, buildPlan, planRemaining, totalLearned, computeStreak, weekStrip, dayDone,
     kanaOptions, pickKana, autoRuby, hasKanji, stripRuby, hira, readingOf, buildLexicon, lexRuby,
   };
 })();

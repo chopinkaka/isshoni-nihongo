@@ -247,7 +247,7 @@
     return p.pids.length === 32 ? `패턴 랠리 (${p.quizIds.length}문제)` : `패턴 퀴즈 ${p.quizIds.length}문제`;
   }
   function estMinutes(plan) {
-    const m = plan.review.length * 0.2 + plan.newIds.length * 1.2 + plan.extra.length * 0.3 + (plan.pattern ? (plan.pattern.mode === 'new' ? 6 : 4) : 0) + (plan.roleplay ? 3 : 0);
+    const m = plan.review.length * 0.2 + plan.newIds.length * 1.2 + plan.extra.length * 0.3 + (plan.pattern ? (plan.pattern.mode === 'new' ? 6 : 4) : 0) + (plan.extraPattern ? 6 : 0) + (plan.roleplay ? 3 : 0);
     return Math.max(1, Math.round(m));
   }
   let deferredInstall = null;
@@ -285,11 +285,14 @@
       else rows.push(['🔁', '복습 없음', '오늘 돌아올 카드가 없어요']);
       if (plan.type === 'study') {
         const nn = plan.newIds.length;
-        rows.push(['🆕', nn ? `새 단어 ${nn}개` : '새 단어 완료', plan.newTarget < 5 && nn ? '복습이 많아 오늘은 줄였어요' : (plan.backlogNew ? `밀린 단어 ${plan.backlogNew}개` : '소리 듣고 따라 말하기')]);
+        const sub = [plan.newCarry ? `지난 분량 ${plan.newCarry}개 포함` : (plan.newTarget < 5 && nn ? '복습이 많아 오늘은 줄였어요' : '소리 듣고 따라 말하기'),
+          plan.backlogNew ? `아직 밀린 ${plan.backlogNew}개는 며칠에 나눠서` : ''].filter(Boolean).join(' · ');
+        rows.push(['🆕', nn ? `새 단어 ${nn}개` : '새 단어 완료', sub]);
         if (plan.extra.length) rows.push(['📝', `N5 예문 ${plan.extra.length}장`, '이미 배운 단어의 예문']);
       } else if (plan.newIds.length) {
         rows.push(['🆕', `밀린 새 단어 ${plan.newIds.length}개`, '여유가 있어서 따라잡기']);
       }
+      if (plan.extraPattern) { const x = DATA.patternsById[plan.extraPattern.pids[0]]; rows.push(['↩️', `놓친 패턴 ${x.no}. ${x.jp}`, '예문 듣고 따라 말하기 → 퀴즈']); }
       if (plan.pattern) rows.push(['💬', patternLabel(plan), plan.pattern.mode === 'new' ? '예문 듣고 따라 말하기 → 퀴즈' : '한국어를 보고 일본어로 말하기']);
       else if (day.pattern && plan.type === 'study') rows.push(['💬', '패턴 완료', '']);
       if (plan.roleplay) rows.push(['🎭', `롤플레잉 · ${partName(DATA.rolesById[plan.roleplay].part)}`, '가게·역에서 주고받는 말']);
@@ -305,7 +308,9 @@
       } else {
         body = `<div class="card plan"><h2>${title} <span class="min">약 ${estMinutes(plan)}분</span></h2>
           <ul class="plan-list">${rows.map(r => `<li><span class="ic" aria-hidden="true">${r[0]}</span><div><b>${esc(r[1])}</b>${r[2] ? `<small>${esc(r[2])}</small>` : ''}</div></li>`).join('')}</ul>
-          <button class="btn lg block primary" data-act="start">${started ? '이어서 하기' : '학습 시작'} ▶</button>${kanaBtn}${kanaNote}</div>`;
+          <button class="btn lg block primary" data-act="start">${started ? '이어서 하기' : '학습 시작'} ▶</button>
+          ${(plan.newCarry || plan.extraPattern) && !started ? '<button class="btn ghost block" data-act="only-today">부담되면 오늘 것만 하기</button>' : ''}
+          ${plan.onlyToday && plan.backlogNew ? '<button class="btn ghost block" data-act="with-backlog">밀린 것도 함께 하기</button>' : ''}${kanaBtn}${kanaNote}</div>`;
       }
     }
 
@@ -357,6 +362,7 @@
     plan.extra.forEach(id => items.push({ kind: 'extra', id, step: 'N5 예문', sub: '' }));
     plan.newIds.forEach(id => items.push({ kind: 'learn', id, step: '새 단어', sub: '익히기' }));
     plan.newIds.forEach(id => items.push({ kind: 'recall', id, step: '새 단어', sub: '떠올리기' }));
+    if (plan.extraPattern) items.push(...patternItems(plan.extraPattern).map(x => { delete x.endsPattern; x.sub = x.kind === 'pattern' ? '놓친 패턴' : '놓친 패턴 · ' + x.sub; return x; }));
     if (plan.pattern) items.push(...patternItems(plan.pattern));
     if (plan.roleplay) items.push({ kind: 'roleplay', rid: plan.roleplay, step: '롤플레잉', sub: '', endsRoleplay: true });
     return items;
@@ -909,6 +915,8 @@
       install: async () => { if (!deferredInstall) return; deferredInstall.prompt(); await deferredInstall.userChoice.catch(() => { }); deferredInstall = null; render({ keepScroll: true }); },
       'hide-install': () => { state.settings.installTipHidden = true; save(); render({ keepScroll: true }); },
       wf: () => { WB.filter = el.dataset.v; render({ keepScroll: true }); },
+      'only-today': () => { const dd = daily(today()); dd.onlyToday = true; delete dd.newTarget; save(); render({ keepScroll: true }); },
+      'with-backlog': () => { const dd = daily(today()); delete dd.onlyToday; delete dd.newTarget; save(); render({ keepScroll: true }); },
       'word-new': () => { const q = el.dataset.q || ''; PREFILL = q ? (isJa(q) ? { jp: q } : { mean: q }) : null; go('#/words/new'); },
       'word-del': () => {
         const id = el.dataset.id; if (!confirm('이 단어를 삭제할까요? 복습 기록도 함께 지워져요.')) return;
