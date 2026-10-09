@@ -186,7 +186,8 @@
   function afterRender(route) {
     if (route === 'session' && SESS && SESS.pendingSpeak) {
       SESS.pendingSpeak = false;
-      if (state.settings.autoSpeak) speakItem(SESS.items[SESS.i]);
+      const s = shownSession();
+      if (state.settings.autoSpeak) speakItem(s.items[s.i], s.ui);
     }
     if (route === 'kana' && KQ && KQ.pendingSpeak) { KQ.pendingSpeak = false; Speech.say(KQ.items[KQ.i].t.k); }
   }
@@ -349,7 +350,45 @@
   /* ================= 세션 ================= */
   let SESS = null;
   function newSession(kind, items, extra = {}) {
-    SESS = Object.assign({ kind, items, i: 0, ui: {}, date: today(), tick: Date.now(), pendingSpeak: true, done: false }, extra);
+    SESS = Object.assign({ kind, items, i: 0, ui: {}, browseIndex: null, browseUi: {}, date: today(), tick: Date.now(), pendingSpeak: true, done: false }, extra);
+  }
+  // 학습 위치와 다시 보는 위치를 분리해 같은 카드를 중복 채점하지 않는다.
+  function shownSession() {
+    const s = SESS;
+    return s.browseIndex == null ? s : Object.assign({}, s, { i: s.browseIndex, ui: s.browseUi, browsing: true });
+  }
+  function returnToCurrent() {
+    if (!SESS || SESS.browseIndex == null) return;
+    SESS.browseIndex = null; SESS.browseUi = {}; SESS.pendingSpeak = true;
+    render();
+  }
+  function navigateSession(direction) {
+    const s = SESS;
+    if (!s || s.done || location.hash !== '#/session') return;
+    const index = s.browseIndex == null ? s.i : s.browseIndex;
+    if (direction < 0) {
+      if (index === 0) { toast('첫 번째 카드예요'); return; }
+      s.browseIndex = index - 1;
+    } else if (s.browseIndex != null) {
+      if (index + 1 >= s.i) { returnToCurrent(); return; }
+      s.browseIndex = index + 1;
+    } else {
+      const it = s.items[s.i];
+      if (it.kind === 'learn') { C.introduce(state, it.id, s.date); advance(); }
+      else if (['extra', 'pattern', 'example'].includes(it.kind)) advance();
+      else toast(it.kind === 'roleplay' ? '정답 보기·다음 버튼으로 대화를 이어가세요' : '정답을 확인하고 직접 채점해 주세요');
+      return;
+    }
+    const it = s.items[s.browseIndex];
+    s.browseUi = { reveal: true, line: it.kind === 'roleplay' ? DATA.rolesById[it.rid].lines.length - 1 : 0 };
+    s.pendingSpeak = true; render();
+  }
+  function historyItemView(it, s) {
+    const box = document.createElement('div');
+    box.innerHTML = itemView(it, s);
+    // 음성·발음 표시는 쓸 수 있지만 완료한 카드의 진도/채점 버튼은 표시하지 않는다.
+    box.querySelectorAll('.gradebar, [data-act]:not([data-act="show-kr"])').forEach(el => el.remove());
+    return box.innerHTML;
   }
   function tickTime() {
     if (!SESS) return;
@@ -415,12 +454,14 @@
     return b > a ? `${name}  ${s.i - a + 1}/${b - a + 1}` : name;
   }
   function viewSession() {
-    const s = SESS, it = s.items[s.i];
+    const s = shownSession(), it = s.items[s.i];
     if (!it) return '<main class="page"><p>끝났어요.</p></main>';
-    const pct = Math.round((s.i / s.items.length) * 100);
+    const pct = Math.round((SESS.i / SESS.items.length) * 100);
     const top = `<div class="sess-top"><button class="btn ghost sm" data-act="exit">✕ 그만하기</button><div class="prog" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div></div>
       <div class="step">${esc(groupLabel(s))}${it.again ? ' · 한 번 더' : ''}</div>`;
-    return `<main class="page sess">${top}${itemView(it, s)}</main>`;
+    const history = s.browsing ? '<div class="history-note" role="status">앞서 본 카드예요 · 다시 채점하지 않아요<button class="btn ghost sm" data-act="session-current">공부하던 카드로 돌아가기 ↗</button></div>' : '';
+    const nav = `<div class="session-nav" aria-label="학습 카드 이동"><button class="btn sec" data-act="session-prev" ${s.i === 0 ? 'disabled' : ''}>◀ 이전 카드</button>${s.browsing ? '<button class="btn sec" data-act="session-next">다음 카드 ▶</button>' : '<span class="tiny muted">좌우로 밀어 넘길 수 있어요</span>'}</div>`;
+    return `<main class="page sess">${top}${history}<div class="session-card">${s.browsing ? historyItemView(it, s) : itemView(it, s)}</div>${nav}</main>`;
   }
   const gradeBar = labels => `<div class="gradebar"><button class="g g-no" data-act="grade" data-g="no">${labels[0]}<small>내일 다시</small></button><button class="g g-fz" data-act="grade" data-g="fuzzy">${labels[1]}<small>같은 단계</small></button><button class="g g-ok" data-act="grade" data-g="know">${labels[2]}<small>다음 단계</small></button></div>`;
   const KR_LINE = (kr, ui) => (kr ? (krVisible() || ui.kr ? `<div class="kr">${esc(kr)}</div>` : '<button class="btn ghost sm" data-act="show-kr">한글 발음 보기</button>') : '');
@@ -493,20 +534,22 @@
     }
     return `<div class="card q"><div class="cat">롤플레잉 · PART ${r.part} ${esc(partName(r.part))}</div><div class="rl-list">${done}</div>${cur}</div>`;
   }
-  function speakItem(it) {
+  function speakItem(it, ui = SESS.ui) {
     if (!it) return;
-    const ui = SESS.ui;
     switch (it.kind) {
       case 'review': case 'recall': speakOrWarn(wordSay(W(it.id))); break;
       case 'learn': { const w = W(it.id); const ex = exCard(w); speakOrWarn([wordSay(w)].concat(ex && ex.ex ? [ex.ex] : [])); break; }
       case 'extra': speakOrWarn(W(it.id).ex); break;
       case 'pattern': speakOrWarn(PAT(it.pid).jp); break;
       case 'example': speakOrWarn(PAT(it.pid).examples[it.idx].jp); break;
+      case 'quiz': if (ui.reveal) speakOrWarn(C.quizOf(DATA, it.qid).q.jp); break;
+      case 'cquiz': if (ui.reveal) speakOrWarn(PAT(it.pid).quiz[it.idx].jp); break;
       case 'roleplay': { const l = DATA.rolesById[it.rid].lines[ui.line || 0]; if (l && l.who === 'staff') speakOrWarn(l.jp); break; }
       default: break;
     }
   }
   function advance(requeue) {
+    if (!SESS || SESS.browseIndex != null) return;
     const s = SESS, it = s.items[s.i];
     tickTime();
     // 항목 완료 표시(재개 시 반복 방지)
@@ -526,6 +569,7 @@
     render();
   }
   function gradeItem(g) {
+    if (!SESS || SESS.browseIndex != null) return;
     const s = SESS, it = s.items[s.i];
     const id = it.qid || it.id;
     tickTime();
@@ -890,6 +934,26 @@
   }
 
   /* ================= 이벤트 ================= */
+  let swipe = null, suppressSwipeClickUntil = 0;
+  document.addEventListener('pointerdown', e => {
+    suppressSwipeClickUntil = 0;
+    if (swipe) { swipe = null; return; }
+    if (!e.isPrimary || e.button !== 0 || location.hash !== '#/session') return;
+    if (!e.target.closest('.session-card') || e.target.closest('button, a, input, select, textarea')) return;
+    swipe = { id: e.pointerId, x: e.clientX, y: e.clientY, started: Date.now(), session: SESS, index: SESS.i, browseIndex: SESS.browseIndex };
+  });
+  document.addEventListener('pointercancel', () => { swipe = null; });
+  document.addEventListener('pointerup', e => {
+    const start = swipe; swipe = null;
+    if (!start || start.id !== e.pointerId || !SESS || start.session !== SESS || start.index !== SESS.i || start.browseIndex !== SESS.browseIndex) return;
+    const dx = e.clientX - start.x, dy = e.clientY - start.y;
+    if (Date.now() - start.started > 1200 || Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    suppressSwipeClickUntil = Date.now() + 400;
+    navigateSession(dx > 0 ? -1 : 1);
+  });
+  document.addEventListener('click', e => {
+    if (Date.now() < suppressSwipeClickUntil) { e.preventDefault(); e.stopImmediatePropagation(); }
+  }, true);
   document.addEventListener('click', e => {
     const say = e.target.closest('[data-say]');
     if (say) { e.preventDefault(); speakOrWarn(say.dataset.say); return; }
@@ -898,9 +962,12 @@
     const A = {
       role: () => setRole(el.dataset.role),
       start: () => startToday(),
+      'session-prev': () => navigateSession(-1),
+      'session-next': () => navigateSession(1),
+      'session-current': () => returnToCurrent(),
       exit: () => { tickTime(); save(); toast('진행 상황은 저장됐어요'); const back = SESS && SESS.returnTo; if (SESS && SESS.kind !== 'today') SESS = null; go(back || '#/today'); },
       reveal: () => { SESS.ui.reveal = true; tickTime(); render({ keepScroll: true }); const it = SESS.items[SESS.i]; if ((it.kind === 'quiz' || it.kind === 'cquiz') && state.settings.autoSpeak) speakOrWarn(it.kind === 'cquiz' ? PAT(it.pid).quiz[it.idx].jp : C.quizOf(DATA, it.qid).q.jp); },
-      'show-kr': () => { SESS.ui.kr = true; render({ keepScroll: true }); },
+      'show-kr': () => { shownSession().ui.kr = true; render({ keepScroll: true }); },
       grade: () => gradeItem(el.dataset.g),
       learned: () => { const it = SESS.items[SESS.i]; C.introduce(state, it.id, SESS.date); advance(); },
       'extra-next': () => advance(),
