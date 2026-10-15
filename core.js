@@ -328,6 +328,39 @@ const Core = (() => {
     return any ? out : null;
   }
 
+  /* ---------- 말한 내용 비교 (음성 인식 결과 vs 목표 문장) ---------- */
+  const speechNorm = str => hira(String(str || '').toLowerCase()).replace(/[\s、。，,.？?！!・〜～~ー\-「」『』()（）]/g, '');
+  /** 글자 단위 정렬. ops: ok(같음) / sub(다름) / del(목표에는 있는데 못 들음) / ins(더 들어감) */
+  function alignChars(a, b) {
+    const A = [...a], B = [...b], n = A.length, m = B.length;
+    const d = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+    for (let i = 0; i <= n; i++) d[i][0] = i;
+    for (let j = 0; j <= m; j++) d[0][j] = j;
+    for (let i = 1; i <= n; i++) for (let j = 1; j <= m; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (A[i - 1] === B[j - 1] ? 0 : 1));
+    const ops = []; let i = n, j = m;
+    while (i > 0 || j > 0) {
+      if (i > 0 && j > 0 && d[i][j] === d[i - 1][j - 1] + (A[i - 1] === B[j - 1] ? 0 : 1)) { ops.push({ t: A[i - 1] === B[j - 1] ? 'ok' : 'sub', a: A[i - 1], b: B[j - 1] }); i--; j--; }
+      else if (i > 0 && d[i][j] === d[i - 1][j] + 1) { ops.push({ t: 'del', a: A[i - 1] }); i--; }
+      else { ops.push({ t: 'ins', b: B[j - 1] }); j--; }
+    }
+    return { dist: d[n][m], ops: ops.reverse() };
+  }
+  /** targets: 정답으로 인정할 표기들(예: 한자 문장, 히라가나 읽기). heard: 인식된 글. 가장 비슷한 조합의 점수(0~1)와 정렬을 돌려준다.
+      인식기는 한자로 적어 줄 때가 많아서, 아는 한자는 읽기 사전(lex)으로 히라가나로 바꾼 것도 같이 비교한다. */
+  function speechMatch(targets, heard, lex) {
+    const hs = [heard];
+    if (lex) { const r = lexRuby(heard, lex); if (r) hs.push(readingOf(heard, r)); }
+    let best = null;
+    for (const t of targets) for (const h of hs) {
+      const a = speechNorm(t), b = speechNorm(h);
+      if (!a) continue;
+      const al = alignChars(a, b);
+      const score = Math.max(0, 1 - al.dist / Math.max(a.length, b.length, 1));
+      if (!best || score > best.score) best = { score, target: t, heard: h, ops: al.ops };
+    }
+    return best || { score: 0, target: '', heard, ops: [] };
+  }
+
   /* ---------- 가나 퀴즈 ---------- */
   /** pool: 문제 후보 [{k,kr,ro,type}]. 헷갈리는 짝의 읽기를 보기에 우선 넣는다. */
   function kanaOptions(target, pool, confusions, rng = Math.random, n = 4) {
@@ -362,7 +395,7 @@ const Core = (() => {
     introduce, grade,
     indexData, isQuizId, quizPid, quizIds, quizOf, dayInfo,
     MAX_NEW, newWordTarget, buildPlan, planRemaining, totalLearned, computeStreak, weekStrip, dayDone,
-    kanaOptions, pickKana, autoRuby, hasKanji, stripRuby, hira, readingOf, buildLexicon, lexRuby,
+    kanaOptions, pickKana, autoRuby, hasKanji, stripRuby, hira, readingOf, buildLexicon, lexRuby, speechNorm, alignChars, speechMatch,
   };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = Core;

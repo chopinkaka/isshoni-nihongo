@@ -238,3 +238,16 @@ form.card .setlabel:first-child { margin-top: 0; }
 .row2 .btn { padding-inline: .4rem; text-align: center; }
 .qgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .qgrid > * { min-width: 0; padding-inline: .4rem; text-align: center; }
+
+/* 마이크 시험 */
+.caps { list-style: none; padding: 0; margin: 0; }
+.caps li { padding: .45rem 0; border-bottom: 1px solid var(--line); }
+.caps li:last-child { border-bottom: 0; }
+.caps small { display: block; color: var(--muted); font-size: .78rem; }
+.caps .good b { color: var(--good); } .caps .bad b { color: var(--bad); }
+.mtout { margin-top: .6rem; }
+.mtout audio { width: 100%; }
+select.full { width: 100%; margin-bottom: .6rem; border-radius: .8rem; }
+.report { font-size: .7rem; max-height: 14rem; overflow: auto; background: var(--bg); padding: .6rem; border-radius: .6rem; white-space: pre-wrap; word-break: break-all; }
+.match { font-size: 1.4rem; font-weight: 700; letter-spacing: .05em; }
+.m-ok { color: var(--good); } .m-bad { color: var(--bad); text-decoration: underline; }

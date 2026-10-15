@@ -176,4 +176,19 @@ ok(data.patterns.patterns.every(p => p.examples.every(e => !Core.hasKanji(e.jp) 
   ok(Core.migrate({ cards: {} }).custom.words && Core.migrate({ custom: { words: { u1: {} } } }).custom.patterns, '마이그레이션: custom 기본값');
 }
 
+// 말한 내용 비교(음성 인식 결과 vs 목표)
+{
+  const T = ['駅までいくらですか？', 'えきまでいくらですか'];
+  const sc = h => Core.speechMatch(T, h, lex).score;
+  ok(sc('駅までいくらですか') === 1, '한자 표기로 인식돼도 만점');
+  ok(sc('えきまでいくらですか') === 1, '히라가나로 인식돼도 만점');
+  ok(sc('エキマデイクラデスカ') === 1, '가타카나로 인식돼도 만점');
+  ok(sc('駅までいくらですが') > 0.85 && sc('駅までいくらですが') < 1, '한 글자 틀리면 조금 감점');
+  ok(sc('こんにちは') < 0.2, '엉뚱한 말은 낮은 점수');
+  const m = Core.speechMatch(T, 'えきまでいくらです', lex);
+  ok(m.ops.some(o => o.t === 'del' && o.a === 'か'), '못 들은 글자를 알려줌');
+  ok(Core.speechMatch(['こんにちは'], '', lex).score === 0, '아무 말도 안 하면 0점');
+  ok(Core.alignChars('abc', 'abc').dist === 0 && Core.alignChars('abc', 'abd').dist === 1, 'alignChars');
+}
+
 console.log(`OK: ${n} checks passed`);

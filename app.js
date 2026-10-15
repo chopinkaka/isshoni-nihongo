@@ -165,6 +165,7 @@
       case 'roleplay': startRoleplayPractice(parts[1]); return;
       case 'kana': html = parts[1] === 'quiz' ? viewKanaQuiz() : viewKana(); hideTabs = parts[1] === 'quiz'; break;
       case 'settings': html = viewSettings(); break;
+      case 'mictest': html = viewMicTest(); hideTabs = false; tab = 'settings'; break;
       default: location.replace('#/today'); return;
     }
     app.innerHTML = html;
@@ -917,7 +918,8 @@
         ${toggle('autoSpeak', '자동으로 소리 재생', '카드가 나오면 바로 읽어 줘요')}
         ${toggle('kanaWarmup', '가나 워밍업', '가나 표·퀴즈 탭을 보여줘요')}
         ${toggle('showReview', '「검수 중」 표시', 'Claude가 채운 내용에 작은 표시')}</div>
-      <div class="card"><div class="setrow"><div><b>일본어 음성</b><small>${vtxt}</small></div><a class="btn sec sm" href="#/voice">확인</a></div></div>
+      <div class="card"><div class="setrow"><div><b>일본어 음성</b><small>${vtxt}</small></div><a class="btn sec sm" href="#/voice">확인</a></div>
+        <div class="setrow"><div><b>🎙 마이크·음성 인식 시험</b><small>내 발음 피드백 기능을 넣기 전 시험 (실험)</small></div><a class="btn sec sm" href="#/mictest">시험</a></div></div>
       <div class="card"><div class="setlabel">학습 기록 (이 폰에 저장)</div>
         <p class="tiny muted">배운 단어 ${C.totalLearned(DATA, state)}개 · 기록 ${state.log.length}일 · 내 단어 ${nCustomWords()}개 · 내 패턴 ${Object.keys(state.custom.patterns).length}개</p>
         <div class="row2"><button class="btn sec" data-act="export">내보내기</button><label class="btn sec filebtn">가져오기<input type="file" accept="application/json,.json" data-act="import" hidden></label></div>
@@ -926,6 +928,95 @@
         <p class="tiny muted">학습 자료 출처: 바로일본어 무료 공개 자료 (왕초보 일본어 단어장 130개 · JLPT N5 필수 200단어 · 일본여행 필수패턴 32개). 저작권은 바로일본어에 있으며 이 앱은 가족 학습용입니다.</p>
         <p class="tiny muted">「검수 중」: Claude가 채운 요미가나·퀴즈 정답이에요. 이상하면 알려 주세요.</p></div></main>`;
   }
+  /* ================= 마이크·음성 인식 시험 (실험) ================= */
+  const MT = { log: [], url: null, rec: null };
+  const MT_TARGETS = [
+    { jp: 'こんにちは', read: 'こんにちは', mean: '안녕하세요' },
+    { jp: 'ありがとうございます', read: 'ありがとうございます', mean: '감사합니다' },
+    { jp: '駅までいくらですか？', read: 'えきまでいくらですか', mean: '역까지 얼마예요?' },
+    { jp: 'お会計をお願いします。', read: 'おかいけいをおねがいします', mean: '계산 부탁드려요' },
+  ];
+  const SR_CLASS = () => window.SpeechRecognition || window.webkitSpeechRecognition;
+  const SR_ERR = { 'not-allowed': '마이크 사용이 허용되지 않았어요 (크롬 주소창 왼쪽 자물쇠 → 권한 → 마이크 허용)', 'service-not-allowed': '이 브라우저에서 음성 인식 서비스가 막혀 있어요', 'no-speech': '말소리가 들리지 않았어요', 'audio-capture': '마이크를 찾지 못했어요', network: '인터넷 연결(음성 인식 서버)에 문제가 있어요', 'language-not-supported': '일본어 인식을 지원하지 않아요', aborted: '중간에 멈췄어요' };
+  function mtCaps() {
+    return { secure: !!window.isSecureContext, mic: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia), recorder: typeof MediaRecorder !== 'undefined', recognition: !!SR_CLASS(), standalone: isStandalone(), online: navigator.onLine, jaVoice: Speech.status() };
+  }
+  function mtLog(entry) {
+    MT.log.push(Object.assign({ at: new Date().toISOString().slice(11, 19) }, entry));
+    const r = $('#mtReport'); if (r) r.textContent = mtReport();
+  }
+  const mtReport = () => JSON.stringify({ app: APP_VERSION, ua: navigator.userAgent, caps: mtCaps(), results: MT.log }, null, 1);
+  function viewMicTest() {
+    const c = mtCaps();
+    const row = (ok, label, note) => `<li class="${ok ? 'good' : 'bad'}"><b>${ok ? '✓' : '✗'}</b> ${label}${note ? `<small>${note}</small>` : ''}</li>`;
+    return `<main class="page"><a class="back" href="#/settings">← 설정</a><h1>🎙 마이크·음성 인식 시험</h1>
+      <p class="muted">발음 피드백 기능을 넣기 전에, 이 폰에서 되는지 확인하는 화면이에요. 녹음은 이 화면 안에서만 쓰이고 저장되지 않아요.</p>
+      <div class="card"><h2>1. 기능 확인</h2><ul class="caps">
+        ${row(c.secure, '보안 연결(https)')}${row(c.mic, '마이크 사용 기능')}${row(c.recorder, '녹음 기능')}${row(c.recognition, '음성 인식 기능', c.recognition ? '크롬은 말소리를 구글 서버로 보내 글자로 바꿔요 (인터넷 필요)' : '이 브라우저는 지원하지 않아요')}
+        ${row(c.online, '인터넷 연결')}<li><b>${c.standalone ? '📲' : '🌐'}</b> ${c.standalone ? '홈 화면 앱으로 실행 중' : '브라우저에서 실행 중'}<small>홈 화면 앱과 브라우저에서 결과가 다를 수 있어서 둘 다 해 보면 좋아요</small></li></ul></div>
+      <div class="card"><h2>2. 녹음해서 다시 듣기</h2><p class="muted">아무 말이나 4초 동안 해 보세요. 끝나면 바로 들어 볼 수 있어요.</p>
+        <button class="btn lg block primary" data-act="mt-rec" ${c.mic && c.recorder ? '' : 'disabled'}>🎙 녹음 시작 (4초)</button><div id="mtRec" class="mtout"></div></div>
+      <div class="card"><h2>3. 말하면 알아듣는지</h2>
+        <label class="setlabel" for="mtTarget">따라 말할 문장</label>
+        <select id="mtTarget" class="full">${MT_TARGETS.map((t, i) => `<option value="${i}">${esc(t.jp)} (${esc(t.mean)})</option>`).join('')}</select>
+        <button class="btn lg block primary" data-act="mt-say" ${c.recognition ? '' : 'disabled'}>🎙 말하기</button><div id="mtSay" class="mtout"></div></div>
+      <div class="card"><h2>4. 결과 복사</h2><p class="muted">시험이 끝나면 「복사」를 눌러 광우에게 붙여 넣어 주세요.</p>
+        <button class="btn sec block" data-act="mt-copy">결과 복사</button><pre id="mtReport" class="report">${esc(mtReport())}</pre></div></main>`;
+  }
+  async function mtRecord(btn) {
+    const out = $('#mtRec'); const t0 = Date.now();
+    btn.disabled = true; out.innerHTML = '<p>녹음 중… 말해 보세요 🎙</p>';
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'].find(m => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) || '';
+      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      const chunks = [];
+      rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+      rec.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(chunks, { type: rec.mimeType || mime || 'audio/webm' });
+        if (MT.url) URL.revokeObjectURL(MT.url);
+        MT.url = URL.createObjectURL(blob);
+        out.innerHTML = `<audio controls src="${MT.url}"></audio><p class="tiny muted">${Math.round(blob.size / 1024)}KB · ${esc(blob.type)}</p><p>소리가 들리나요?</p>`;
+        mtLog({ test: 'record', ok: blob.size > 0, bytes: blob.size, mime: blob.type, ms: Date.now() - t0 });
+        btn.disabled = false;
+      };
+      rec.start();
+      setTimeout(() => { if (rec.state !== 'inactive') rec.stop(); }, 4000);
+    } catch (e) {
+      out.innerHTML = `<p class="status warn">녹음할 수 없어요: ${esc(SR_ERR[e.name === 'NotAllowedError' ? 'not-allowed' : ''] || e.name)}</p>`;
+      mtLog({ test: 'record', ok: false, error: `${e.name}: ${e.message}` });
+      btn.disabled = false;
+    }
+  }
+  function mtRecognize(btn) {
+    const out = $('#mtSay'), SR = SR_CLASS(), tg = MT_TARGETS[Number($('#mtTarget').value) || 0];
+    const t0 = Date.now(); let done = false;
+    const r = new SR(); r.lang = 'ja-JP'; r.interimResults = false; r.maxAlternatives = 5; r.continuous = false;
+    btn.disabled = true; out.innerHTML = `<p>듣고 있어요… 「${esc(tg.jp)}」 라고 말해 보세요 🎙</p>`;
+    const finish = () => { done = true; btn.disabled = false; };
+    r.onresult = e => {
+      const alts = [...e.results[0]].map(a => ({ text: a.transcript, conf: a.confidence }));
+      const m = C.speechMatch([tg.jp, tg.read], alts[0].text, LEX);
+      const marks = m.ops.map(o => o.t === 'ok' ? `<span class="m-ok">${esc(o.a)}</span>` : o.t === 'ins' ? '' : `<span class="m-bad">${esc(o.a)}</span>`).join('');
+      out.innerHTML = `<p>알아들은 말: <b lang="ja">${esc(alts[0].text)}</b></p><p>목표와 비교: <span class="match" lang="ja">${marks}</span> · <b>${Math.round(m.score * 100)}%</b></p>
+        <p class="tiny muted">후보: ${alts.map(a => `${esc(a.text)} (${a.conf == null ? '?' : Math.round(a.conf * 100) + '%'})`).join(' / ')}</p>`;
+      mtLog({ test: 'recognize', ok: true, target: tg.jp, heard: alts[0].text, score: Math.round(m.score * 100), alts, ms: Date.now() - t0 });
+    };
+    r.onerror = e => {
+      out.innerHTML = `<p class="status warn">${esc(SR_ERR[e.error] || e.error)}</p>`;
+      mtLog({ test: 'recognize', ok: false, target: tg.jp, error: e.error, ms: Date.now() - t0 });
+    };
+    r.onend = () => { if (!done && out.innerHTML.includes('듣고 있어요')) { out.innerHTML = '<p class="status warn">결과가 없어요. 다시 해 볼까요?</p>'; mtLog({ test: 'recognize', ok: false, target: tg.jp, error: 'no-result', ms: Date.now() - t0 }); } finish(); };
+    try { r.start(); } catch (e) { out.innerHTML = `<p class="status warn">시작하지 못했어요: ${esc(e.message)}</p>`; mtLog({ test: 'recognize', ok: false, error: 'start: ' + e.message }); finish(); return; }
+    setTimeout(() => { if (!done) { try { r.abort(); } catch (e) { /* 무시 */ } } }, 12000);
+  }
+  async function mtCopy() {
+    const text = mtReport();
+    try { await navigator.clipboard.writeText(text); toast('복사했어요'); }
+    catch (e) { const r = $('#mtReport'); if (r) { const sel = getSelection(), rg = document.createRange(); rg.selectNodeContents(r); sel.removeAllRanges(); sel.addRange(rg); } toast('글자를 길게 눌러 복사해 주세요'); }
+  }
+
   function download(name, text) {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
@@ -982,6 +1073,9 @@
       install: async () => { if (!deferredInstall) return; deferredInstall.prompt(); await deferredInstall.userChoice.catch(() => { }); deferredInstall = null; render({ keepScroll: true }); },
       'hide-install': () => { state.settings.installTipHidden = true; save(); render({ keepScroll: true }); },
       wf: () => { WB.filter = el.dataset.v; render({ keepScroll: true }); },
+      'mt-rec': () => mtRecord(el),
+      'mt-say': () => mtRecognize(el),
+      'mt-copy': () => mtCopy(),
       'only-today': () => { const dd = daily(today()); dd.onlyToday = true; delete dd.newTarget; save(); render({ keepScroll: true }); },
       'with-backlog': () => { const dd = daily(today()); delete dd.onlyToday; delete dd.newTarget; save(); render({ keepScroll: true }); },
       'word-new': () => { const q = el.dataset.q || ''; PREFILL = q ? (isJa(q) ? { jp: q } : { mean: q }) : null; go('#/words/new'); },
