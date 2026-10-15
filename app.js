@@ -102,8 +102,25 @@
       } catch (e) { return false; }
       return true;
     }
+    /** 끝까지 읽어 준 뒤 resolve (녹음을 소리가 끝난 다음에 시작하기 위해) */
+    function sayWait(text) {
+      return new Promise(resolve => {
+        const t = clean(text);
+        if (!supported || !t) return resolve(false);
+        try {
+          speechSynthesis.cancel();
+          setTimeout(() => {
+            const u = new SpeechSynthesisUtterance(t);
+            u.lang = 'ja-JP'; u.rate = rate(); if (voice) u.voice = voice;
+            u.onend = () => resolve(true); u.onerror = () => resolve(false);
+            speechSynthesis.speak(u);
+            setTimeout(() => resolve(false), 10000);
+          }, 40);
+        } catch (e) { resolve(false); }
+      });
+    }
     return {
-      supported, say, pick,
+      supported, say, sayWait, pick,
       status: () => (!supported ? 'unsupported' : voice ? 'ok' : (voices === 0 ? 'unknown' : 'none')),
       voiceName: () => (voice ? voice.name : ''),
     };
@@ -117,6 +134,59 @@
       toast('일본어 음성이 없을 수 있어요 → 설정 > 일본어 음성 확인');
     }
   }
+
+  /* ================= 마이크: 음성 인식 · 녹음 ================= */
+  const SR_CLASS = () => window.SpeechRecognition || window.webkitSpeechRecognition;
+  const SR_ERR = { 'not-allowed': '마이크 사용이 허용되지 않았어요 (크롬 주소창 왼쪽 자물쇠 → 권한 → 마이크 허용)', 'service-not-allowed': '이 브라우저에서 음성 인식 서비스가 막혀 있어요', 'no-speech': '말소리가 들리지 않았어요. 마이크에 조금 더 가까이 말해 보세요', 'audio-capture': '마이크를 찾지 못했어요', network: '인터넷 연결(음성 인식 서버)에 문제가 있어요', 'language-not-supported': '일본어 인식을 지원하지 않아요', aborted: '중간에 멈췄어요', 'no-result': '결과가 없어요. 다시 해 볼까요?', unsupported: '이 브라우저는 음성 인식을 지원하지 않아요' };
+  const Mic = (() => {
+    let lastUrl = null;
+    const canRecognize = () => !!SR_CLASS();
+    const canRecord = () => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && typeof MediaRecorder !== 'undefined');
+    const revoke = () => { if (lastUrl) { URL.revokeObjectURL(lastUrl); lastUrl = null; } };
+    /** 일본어로 말한 것을 글자로 바꿔 목표(targets)와 비교한다. 반환: {ok, alts, match} 또는 {ok:false, error} */
+    function recognize(targets) {
+      return new Promise(resolve => {
+        const SR = SR_CLASS();
+        if (!SR) return resolve({ ok: false, error: 'unsupported' });
+        try { speechSynthesis.cancel(); } catch (e) { /* 무시 */ }      // 앱 소리가 마이크로 들어가지 않게
+        const t0 = Date.now(); let settled = false;
+        const done = res => { if (!settled) { settled = true; resolve(Object.assign({ ms: Date.now() - t0 }, res)); } };
+        const r = new SR(); r.lang = 'ja-JP'; r.interimResults = false; r.maxAlternatives = 5; r.continuous = false;
+        r.onresult = e => {
+          const alts = [...(e.results[0] || [])].map(a => ({ text: a.transcript, conf: a.confidence }));
+          if (!alts.length) return done({ ok: false, error: 'no-result' });
+          done({ ok: true, alts, match: C.speechMatch(targets, alts[0].text, LEX) });
+        };
+        r.onerror = e => done({ ok: false, error: e.error });
+        r.onend = () => done({ ok: false, error: 'no-result' });
+        try { r.start(); } catch (e) { return done({ ok: false, error: 'start: ' + e.message }); }
+        setTimeout(() => { if (!settled) { try { r.abort(); } catch (e) { /* 무시 */ } } }, 12000);
+      });
+    }
+    /** ms 동안 녹음. 반환: {ok, url, bytes, mime} 또는 {ok:false, error}. 녹음은 이 기기 안에만 있고 저장·전송하지 않는다. */
+    async function record(ms) {
+      let stream;
+      try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+      catch (e) { return { ok: false, error: e.name === 'NotAllowedError' ? 'not-allowed' : e.name, message: e.message }; }
+      return new Promise(resolve => {
+        try {
+          const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'].find(m => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) || '';
+          const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+          const chunks = [];
+          rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+          rec.onstop = () => {
+            stream.getTracks().forEach(t => t.stop());
+            const blob = new Blob(chunks, { type: rec.mimeType || mime || 'audio/webm' });
+            revoke(); lastUrl = URL.createObjectURL(blob);
+            resolve({ ok: blob.size > 0, url: lastUrl, bytes: blob.size, mime: blob.type });
+          };
+          rec.start();
+          setTimeout(() => { if (rec.state !== 'inactive') rec.stop(); }, ms);
+        } catch (e) { stream.getTracks().forEach(t => t.stop()); resolve({ ok: false, error: e.name, message: e.message }); }
+      });
+    }
+    return { canRecognize, canRecord, recognize, record, revoke };
+  })();
 
   /* ================= 공통 UI ================= */
   let toastTimer = null;
@@ -454,6 +524,62 @@
     const name = it.sub && it.sub !== it.step ? `${it.step} · ${it.sub}` : it.step;
     return b > a ? `${name}  ${s.i - a + 1}/${b - a + 1}` : name;
   }
+  /* ---------- 발음 확인 패널: 말해서 확인 / 녹음해서 비교 ---------- */
+  function lineTargets(jpText, jpr, kana) {
+    return [jpText, C.readingOf(jpText, jpr), kana].filter((x, i, a) => x && a.indexOf(x) === i);
+  }
+  /** 지금 카드에서 따라 말할 문장: {say: 들려줄 글, targets: 정답으로 인정할 표기들} */
+  function spkTarget(it, s) {
+    switch (it.kind) {
+      case 'learn': { const w = W(it.id); return { say: wordSay(w), targets: lineTargets(w.jp, w.jpr, wordSay(w)) }; }
+      case 'example': { const e = PAT(it.pid).examples[it.idx]; return { say: e.jp, targets: lineTargets(e.jp, e.jpr, e.kana) }; }
+      case 'quiz': case 'cquiz': { const q = it.kind === 'cquiz' ? PAT(it.pid).quiz[it.idx] : C.quizOf(DATA, it.qid).q; return { say: q.jp, targets: lineTargets(q.jp, q.jpr) }; }
+      case 'roleplay': { const l = DATA.rolesById[it.rid].lines[s.ui.line || 0]; return l && l.who === 'me' ? { say: l.jp, targets: lineTargets(l.jp, l.jpr) } : null; }
+      default: return null;
+    }
+  }
+  function spkPanel(it, s) {
+    if (state.settings.speechCheck === false || !(Mic.canRecognize() || Mic.canRecord()) || !spkTarget(it, s)) return '';
+    return `<div class="spk"><div class="spk-btns">${Mic.canRecognize() ? '<button class="btn sec" data-act="spk-check">🎙 말해서 확인</button>' : ''}${Mic.canRecord() ? '<button class="btn sec" data-act="spk-rec">🎧 녹음해서 비교</button>' : ''}</div><div class="spk-out">${s.ui.spk || ''}</div></div>`;
+  }
+  /** 인식 결과 화면. 점수는 '앱이 알아들은 정도'일 뿐 발음 점수가 아니다(인식기가 말을 보정해 줄 수 있음). */
+  function matchHtml(r, withNote = true) {
+    const m = r.match, pct = Math.round(m.score * 100);
+    const marks = m.ops.map(o => (o.t === 'ok' ? `<span class="m-ok">${esc(o.a)}</span>` : o.t === 'ins' ? '' : `<span class="m-bad">${esc(o.a)}</span>`)).join('');
+    const [cls, msg] = pct >= 90 ? ['good', '잘 알아들었어요 👍'] : pct >= 60 ? ['mid', '거의 맞아요 — 빨간 글자를 다시 들어 보세요'] : ['low', '다시 한 번 천천히 말해 볼까요?'];
+    return `<p class="spk-heard">앱이 알아들은 말: <b lang="ja">${esc(r.alts[0].text)}</b></p><p><span class="match" lang="ja">${marks}</span> <b class="pct ${cls}">${pct}%</b></p><p class="spk-msg ${cls}">${msg}</p>${withNote ? '<p class="tiny muted">앱이 얼마나 알아들었는지 보여주는 거예요. 발음 점수는 아니에요.</p>' : ''}`;
+  }
+  const spkContext = btn => {
+    const s = SESS; if (!s) return null;
+    const it = s.items[s.i], t = spkTarget(it, s), out = btn.closest('.spk') && btn.closest('.spk').querySelector('.spk-out');
+    return t && out ? { s, it, t, out, line: s.ui.line || 0 } : null;
+  };
+  const spkStale = c => !SESS || SESS !== c.s || SESS.items[SESS.i] !== c.it || (SESS.ui.line || 0) !== c.line;   // 카드가 넘어갔으면 결과를 버린다
+  const spkShow = (c, html) => { c.s.ui.spk = html; const el = document.querySelector('.spk-out'); if (el) el.innerHTML = html; };
+  const spkBusy = on => document.querySelectorAll('.spk-btns .btn').forEach(b => { b.disabled = on; });
+  async function spkCheck(btn) {
+    const c = spkContext(btn); if (!c) return;
+    spkBusy(true); spkShow(c, '<p>듣고 있어요… 말해 보세요 🎙</p>');
+    const r = await Mic.recognize(c.t.targets);
+    if (spkStale(c)) return;
+    spkShow(c, r.ok ? matchHtml(r) : `<p class="status warn">${esc(SR_ERR[r.error] || r.error)}</p>`);
+    spkBusy(false);
+  }
+  async function spkRecord(btn) {
+    const c = spkContext(btn); if (!c) return;
+    spkBusy(true); spkShow(c, '<p>① 원어민 소리를 들어 보세요 🔊</p>');
+    await Speech.sayWait(c.t.say);
+    if (spkStale(c)) return;
+    const ms = Math.min(8000, Math.max(3000, 2500 + [...c.t.say].length * 250));
+    spkShow(c, `<p>② 이제 따라 말해 보세요 🎙 (${Math.round(ms / 1000)}초)</p>`);
+    const r = await Mic.record(ms);
+    if (spkStale(c)) return;
+    spkShow(c, r.ok
+      ? `<p>③ 번갈아 들어 보세요</p><div class="spk-ab"><button class="say" data-say="${esc(c.t.say)}" aria-label="원어민 소리">🔊</button><span class="tiny muted">원어민</span><audio controls src="${r.url}"></audio></div><p class="tiny muted">내 녹음은 이 폰 안에만 있고 저장되지 않아요.</p>`
+      : `<p class="status warn">${esc(SR_ERR[r.error] || ('녹음할 수 없어요: ' + r.error))}</p>`);
+    spkBusy(false);
+  }
+
   function viewSession() {
     const s = shownSession(), it = s.items[s.i];
     if (!it) return '<main class="page"><p>끝났어요.</p></main>';
@@ -497,7 +623,7 @@
       }
       case 'learn': {
         const w = W(it.id);
-        return `<div class="card q">${wordBody(w, ui)}${speakBtn(wordSay(w))}<p class="muted">소리를 듣고 3번 따라 말해 보세요</p><button class="btn lg block primary" data-act="learned">다음 ▶</button></div>`;
+        return `<div class="card q">${wordBody(w, ui)}${speakBtn(wordSay(w))}<p class="muted">소리를 듣고 3번 따라 말해 보세요</p>${spkPanel(it, s)}<button class="btn lg block primary" data-act="learned">다음 ▶</button></div>`;
       }
       case 'extra': {
         const dup = W(it.id), base = W(dup.dupOf);
@@ -509,13 +635,13 @@
       }
       case 'example': {
         const p = PAT(it.pid), e = p.examples[it.idx];
-        return `<div class="card q"><div class="patline">${rb(p.jp, p.jpr)}</div><div class="bigjp jp-s">${rb(e.jp, e.jpr)}</div>${speakBtn(e.jp)}${e.kana && !p.custom ? '' : (e.kana ? `<div class="kana">${jp(e.kana)}</div>` : '')}${KR_LINE(e.kr, ui)}<div class="mean">${esc(e.mean)}</div><p class="muted">듣고 그대로 따라 말해 보세요</p><button class="btn lg block primary" data-act="next">따라 말했어요 ▶</button></div>`;
+        return `<div class="card q"><div class="patline">${rb(p.jp, p.jpr)}</div><div class="bigjp jp-s">${rb(e.jp, e.jpr)}</div>${speakBtn(e.jp)}${e.kana && !p.custom ? '' : (e.kana ? `<div class="kana">${jp(e.kana)}</div>` : '')}${KR_LINE(e.kr, ui)}<div class="mean">${esc(e.mean)}</div><p class="muted">듣고 그대로 따라 말해 보세요</p>${spkPanel(it, s)}<button class="btn lg block primary" data-act="next">따라 말했어요 ▶</button></div>`;
       }
       case 'quiz': case 'cquiz': {
         const { p, q } = it.kind === 'cquiz' ? { p: PAT(it.pid), q: PAT(it.pid).quiz[it.idx] } : C.quizOf(DATA, it.qid);
         const head = `<div class="patline">${rb(p.jp, p.jpr)}</div><div class="quizq">${esc(q.q)}</div>`;
-        if (!ui.reveal) return `<div class="card q">${head}<p class="muted">일본어로 소리 내어 말한 뒤 정답을 확인하세요</p><button class="btn lg block primary" data-act="reveal">정답 보기</button></div>`;
-        return `<div class="card q">${head}<div class="bigjp jp-s">${rb(q.jp, q.jpr)}</div>${speakBtn(q.jp)} ${revBadge(q.by === 'claude')}${KR_LINE(q.kr, ui)}<p class="muted">내가 한 말과 비교해 스스로 채점해요</p></div>${gradeBar(['틀렸어요', '헷갈려요', '맞았어요'])}`;
+        if (!ui.reveal) return `<div class="card q">${head}<p class="muted">일본어로 소리 내어 말한 뒤 정답을 확인하세요</p>${spkPanel(it, s)}<button class="btn lg block primary" data-act="reveal">정답 보기</button></div>`;
+        return `<div class="card q">${head}<div class="bigjp jp-s">${rb(q.jp, q.jpr)}</div>${speakBtn(q.jp)} ${revBadge(q.by === 'claude')}${KR_LINE(q.kr, ui)}${spkPanel(it, s)}<p class="muted">내가 한 말과 비교해 스스로 채점해요</p></div>${gradeBar(['틀렸어요', '헷갈려요', '맞았어요'])}`;
       }
       case 'roleplay': return roleplayView(it, s);
       default: return '';
@@ -530,8 +656,8 @@
     if (l) {
       const who = l.who === 'me';
       cur = `<div class="rl cur ${l.who}">${l.cue ? `<div class="cue">(${esc(l.cue)})</div>` : ''}<b>${who ? '나' : '점원'}</b>
-        ${who && !ui.reveal ? `<div class="quizq">${esc(l.mean)}</div><p class="muted">일본어로 말해 보세요</p><button class="btn lg block primary" data-act="rp-reveal">정답 보기</button>`
-          : `<div class="bigjp jp-s">${rb(l.jp, l.jpr)}</div>${speakBtn(l.jp)}${KR_LINE(l.kr, ui)}<div class="mean">${esc(l.mean)}</div><button class="btn lg block primary" data-act="rp-next">${ui.line === r.lines.length - 1 ? '마치기 ✓' : '다음 ▶'}</button>`}</div>`;
+        ${who && !ui.reveal ? `<div class="quizq">${esc(l.mean)}</div><p class="muted">일본어로 말해 보세요</p>${spkPanel(it, s)}<button class="btn lg block primary" data-act="rp-reveal">정답 보기</button>`
+          : `<div class="bigjp jp-s">${rb(l.jp, l.jpr)}</div>${speakBtn(l.jp)}${KR_LINE(l.kr, ui)}<div class="mean">${esc(l.mean)}</div>${who ? spkPanel(it, s) : ''}<button class="btn lg block primary" data-act="rp-next">${ui.line === r.lines.length - 1 ? '마치기 ✓' : '다음 ▶'}</button>`}</div>`;
     }
     return `<div class="card q"><div class="cat">롤플레잉 · PART ${r.part} ${esc(partName(r.part))}</div><div class="rl-list">${done}</div>${cur}</div>`;
   }
@@ -565,7 +691,7 @@
       s.items.splice(Math.min(s.i + 4, s.items.length), 0, copy);
     }
     save();
-    s.i++; s.ui = {}; s.pendingSpeak = true;
+    s.i++; s.ui = {}; s.pendingSpeak = true; Mic.revoke();
     if (s.i >= s.items.length) { finishSession(); return; }
     render();
   }
@@ -916,6 +1042,7 @@
         <div class="setlabel">발음 속도</div>${seg('speed', [['slow', '느리게'], ['normal', '보통'], ['fast', '빠르게']])}
         ${toggle('furigana', '후리가나 표시', '한자 위에 히라가나 읽기를 달아줘요')}
         ${toggle('autoSpeak', '자동으로 소리 재생', '카드가 나오면 바로 읽어 줘요')}
+        ${toggle('speechCheck', '발음 확인 버튼 (마이크)', '말하면 알아들은 정도를 보여주고, 녹음해서 원어민 소리와 번갈아 들어요')}
         ${toggle('kanaWarmup', '가나 워밍업', '가나 표·퀴즈 탭을 보여줘요')}
         ${toggle('showReview', '「검수 중」 표시', 'Claude가 채운 내용에 작은 표시')}</div>
       <div class="card"><div class="setrow"><div><b>일본어 음성</b><small>${vtxt}</small></div><a class="btn sec sm" href="#/voice">확인</a></div>
@@ -936,8 +1063,6 @@
     { jp: '駅までいくらですか？', read: 'えきまでいくらですか', mean: '역까지 얼마예요?' },
     { jp: 'お会計をお願いします。', read: 'おかいけいをおねがいします', mean: '계산 부탁드려요' },
   ];
-  const SR_CLASS = () => window.SpeechRecognition || window.webkitSpeechRecognition;
-  const SR_ERR = { 'not-allowed': '마이크 사용이 허용되지 않았어요 (크롬 주소창 왼쪽 자물쇠 → 권한 → 마이크 허용)', 'service-not-allowed': '이 브라우저에서 음성 인식 서비스가 막혀 있어요', 'no-speech': '말소리가 들리지 않았어요', 'audio-capture': '마이크를 찾지 못했어요', network: '인터넷 연결(음성 인식 서버)에 문제가 있어요', 'language-not-supported': '일본어 인식을 지원하지 않아요', aborted: '중간에 멈췄어요' };
   function mtCaps() {
     return { secure: !!window.isSecureContext, mic: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia), recorder: typeof MediaRecorder !== 'undefined', recognition: !!SR_CLASS(), standalone: isStandalone(), online: navigator.onLine, jaVoice: Speech.status() };
   }
@@ -964,52 +1089,29 @@
         <button class="btn sec block" data-act="mt-copy">결과 복사</button><pre id="mtReport" class="report">${esc(mtReport())}</pre></div></main>`;
   }
   async function mtRecord(btn) {
-    const out = $('#mtRec'); const t0 = Date.now();
-    btn.disabled = true; out.innerHTML = '<p>녹음 중… 말해 보세요 🎙</p>';
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'].find(m => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) || '';
-      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
-      const chunks = [];
-      rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
-      rec.onstop = () => {
-        stream.getTracks().forEach(t => t.stop());
-        const blob = new Blob(chunks, { type: rec.mimeType || mime || 'audio/webm' });
-        if (MT.url) URL.revokeObjectURL(MT.url);
-        MT.url = URL.createObjectURL(blob);
-        out.innerHTML = `<audio controls src="${MT.url}"></audio><p class="tiny muted">${Math.round(blob.size / 1024)}KB · ${esc(blob.type)}</p><p>소리가 들리나요?</p>`;
-        mtLog({ test: 'record', ok: blob.size > 0, bytes: blob.size, mime: blob.type, ms: Date.now() - t0 });
-        btn.disabled = false;
-      };
-      rec.start();
-      setTimeout(() => { if (rec.state !== 'inactive') rec.stop(); }, 4000);
-    } catch (e) {
-      out.innerHTML = `<p class="status warn">녹음할 수 없어요: ${esc(SR_ERR[e.name === 'NotAllowedError' ? 'not-allowed' : ''] || e.name)}</p>`;
-      mtLog({ test: 'record', ok: false, error: `${e.name}: ${e.message}` });
-      btn.disabled = false;
+    const out = $('#mtRec'); btn.disabled = true; out.innerHTML = '<p>녹음 중… 말해 보세요 🎙</p>';
+    const r = await Mic.record(4000);
+    if (r.ok) {
+      out.innerHTML = `<audio controls src="${r.url}"></audio><p class="tiny muted">${Math.round(r.bytes / 1024)}KB · ${esc(r.mime)}</p><p>소리가 들리나요?</p>`;
+      mtLog({ test: 'record', ok: true, bytes: r.bytes, mime: r.mime });
+    } else {
+      out.innerHTML = `<p class="status warn">녹음할 수 없어요: ${esc(SR_ERR[r.error] || r.error)}</p>`;
+      mtLog({ test: 'record', ok: false, error: `${r.error}: ${r.message || ''}` });
     }
+    btn.disabled = false;
   }
-  function mtRecognize(btn) {
-    const out = $('#mtSay'), SR = SR_CLASS(), tg = MT_TARGETS[Number($('#mtTarget').value) || 0];
-    const t0 = Date.now(); let done = false;
-    const r = new SR(); r.lang = 'ja-JP'; r.interimResults = false; r.maxAlternatives = 5; r.continuous = false;
+  async function mtRecognize(btn) {
+    const out = $('#mtSay'), tg = MT_TARGETS[Number($('#mtTarget').value) || 0];
     btn.disabled = true; out.innerHTML = `<p>듣고 있어요… 「${esc(tg.jp)}」 라고 말해 보세요 🎙</p>`;
-    const finish = () => { done = true; btn.disabled = false; };
-    r.onresult = e => {
-      const alts = [...e.results[0]].map(a => ({ text: a.transcript, conf: a.confidence }));
-      const m = C.speechMatch([tg.jp, tg.read], alts[0].text, LEX);
-      const marks = m.ops.map(o => o.t === 'ok' ? `<span class="m-ok">${esc(o.a)}</span>` : o.t === 'ins' ? '' : `<span class="m-bad">${esc(o.a)}</span>`).join('');
-      out.innerHTML = `<p>알아들은 말: <b lang="ja">${esc(alts[0].text)}</b></p><p>목표와 비교: <span class="match" lang="ja">${marks}</span> · <b>${Math.round(m.score * 100)}%</b></p>
-        <p class="tiny muted">후보: ${alts.map(a => `${esc(a.text)} (${a.conf == null ? '?' : Math.round(a.conf * 100) + '%'})`).join(' / ')}</p>`;
-      mtLog({ test: 'recognize', ok: true, target: tg.jp, heard: alts[0].text, score: Math.round(m.score * 100), alts, ms: Date.now() - t0 });
-    };
-    r.onerror = e => {
-      out.innerHTML = `<p class="status warn">${esc(SR_ERR[e.error] || e.error)}</p>`;
-      mtLog({ test: 'recognize', ok: false, target: tg.jp, error: e.error, ms: Date.now() - t0 });
-    };
-    r.onend = () => { if (!done && out.innerHTML.includes('듣고 있어요')) { out.innerHTML = '<p class="status warn">결과가 없어요. 다시 해 볼까요?</p>'; mtLog({ test: 'recognize', ok: false, target: tg.jp, error: 'no-result', ms: Date.now() - t0 }); } finish(); };
-    try { r.start(); } catch (e) { out.innerHTML = `<p class="status warn">시작하지 못했어요: ${esc(e.message)}</p>`; mtLog({ test: 'recognize', ok: false, error: 'start: ' + e.message }); finish(); return; }
-    setTimeout(() => { if (!done) { try { r.abort(); } catch (e) { /* 무시 */ } } }, 12000);
+    const r = await Mic.recognize([tg.jp, tg.read]);
+    if (r.ok) {
+      out.innerHTML = matchHtml(r, false) + `<p class="tiny muted">후보: ${r.alts.map(a => `${esc(a.text)} (${a.conf == null ? '?' : Math.round(a.conf * 100) + '%'})`).join(' / ')}</p>`;
+      mtLog({ test: 'recognize', ok: true, target: tg.jp, heard: r.alts[0].text, score: Math.round(r.match.score * 100), alts: r.alts, ms: r.ms });
+    } else {
+      out.innerHTML = `<p class="status warn">${esc(SR_ERR[r.error] || r.error)}</p>`;
+      mtLog({ test: 'recognize', ok: false, target: tg.jp, error: r.error, ms: r.ms });
+    }
+    btn.disabled = false;
   }
   async function mtCopy() {
     const text = mtReport();
@@ -1067,12 +1169,14 @@
       'rp-next': () => {
         const s = SESS, r = DATA.rolesById[s.items[s.i].rid];
         if (s.ui.line >= r.lines.length - 1) { advance(); return; }
-        s.ui.line++; s.ui.reveal = false; tickTime(); render({ keepScroll: true });
+        s.ui.line++; s.ui.reveal = false; s.ui.spk = ''; Mic.revoke(); tickTime(); render({ keepScroll: true });
         const l = r.lines[s.ui.line]; if (l.who === 'staff' && state.settings.autoSpeak) speakOrWarn(l.jp);
       },
       install: async () => { if (!deferredInstall) return; deferredInstall.prompt(); await deferredInstall.userChoice.catch(() => { }); deferredInstall = null; render({ keepScroll: true }); },
       'hide-install': () => { state.settings.installTipHidden = true; save(); render({ keepScroll: true }); },
       wf: () => { WB.filter = el.dataset.v; render({ keepScroll: true }); },
+      'spk-check': () => spkCheck(el),
+      'spk-rec': () => spkRecord(el),
       'mt-rec': () => mtRecord(el),
       'mt-say': () => mtRecognize(el),
       'mt-copy': () => mtCopy(),

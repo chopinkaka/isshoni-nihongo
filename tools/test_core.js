@@ -188,6 +188,9 @@ ok(data.patterns.patterns.every(p => p.examples.every(e => !Core.hasKanji(e.jp) 
   const m = Core.speechMatch(T, 'えきまでいくらです', lex);
   ok(m.ops.some(o => o.t === 'del' && o.a === 'か'), '못 들은 글자를 알려줌');
   ok(Core.speechMatch(['こんにちは'], '', lex).score === 0, '아무 말도 안 하면 0점');
+  ok(Core.speechMatch(['こんにちは'], 'こんにちわ', lex).score === 1, '조사/인사의 は=わ 표기 차이는 감점 없음');
+  ok(Core.speechMatch(['駅へ行きます'], '駅え行きます', lex).score === 1 && Core.speechMatch(['本をください'], '本おください', lex).score === 1, 'へ=え, を=お');
+  ok(Core.speechMatch(['かさ'], 'たさ', lex).score < 1, '다른 소리는 여전히 감점');
   ok(Core.alignChars('abc', 'abc').dist === 0 && Core.alignChars('abc', 'abd').dist === 1, 'alignChars');
 }
 

@@ -26,7 +26,7 @@ const Core = (() => {
 
   /* ---------- 저장 구조 ---------- */
   function defaultSettings() {
-    return { fontSize: 'large', krMode: 'show', speed: 'normal', autoSpeak: true, kanaWarmup: false, showReview: true, furigana: true };
+    return { fontSize: 'large', krMode: 'show', speed: 'normal', autoSpeak: true, kanaWarmup: false, showReview: true, furigana: true, speechCheck: true };
   }
   function defaultState() {
     return {
@@ -329,17 +329,20 @@ const Core = (() => {
   }
 
   /* ---------- 말한 내용 비교 (음성 인식 결과 vs 목표 문장) ---------- */
-  const speechNorm = str => hira(String(str || '').toLowerCase()).replace(/[\s、。，,.？?！!・〜～~ー\-「」『』()（）]/g, '');
+  // 소리가 같은 표기(を=お, ぢ=じ, づ=ず)는 같은 글자로, 조사 は=わ·へ=え는 비교할 때 같은 소리로 본다(인식기가 어느 쪽으로 적을지 알 수 없으므로)
+  const speechNorm = str => hira(String(str || '').toLowerCase()).replace(/[\s、。，,.？?！!・〜～~ー\-「」『』()（）]/g, '').replace(/を/g, 'お').replace(/ぢ/g, 'じ').replace(/づ/g, 'ず');
+  const SAME_SOUND = { は: 'わ', わ: 'は', へ: 'え', え: 'へ' };
+  const sameChar = (x, y) => x === y || SAME_SOUND[x] === y;
   /** 글자 단위 정렬. ops: ok(같음) / sub(다름) / del(목표에는 있는데 못 들음) / ins(더 들어감) */
   function alignChars(a, b) {
     const A = [...a], B = [...b], n = A.length, m = B.length;
     const d = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
     for (let i = 0; i <= n; i++) d[i][0] = i;
     for (let j = 0; j <= m; j++) d[0][j] = j;
-    for (let i = 1; i <= n; i++) for (let j = 1; j <= m; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (A[i - 1] === B[j - 1] ? 0 : 1));
+    for (let i = 1; i <= n; i++) for (let j = 1; j <= m; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (sameChar(A[i - 1], B[j - 1]) ? 0 : 1));
     const ops = []; let i = n, j = m;
     while (i > 0 || j > 0) {
-      if (i > 0 && j > 0 && d[i][j] === d[i - 1][j - 1] + (A[i - 1] === B[j - 1] ? 0 : 1)) { ops.push({ t: A[i - 1] === B[j - 1] ? 'ok' : 'sub', a: A[i - 1], b: B[j - 1] }); i--; j--; }
+      if (i > 0 && j > 0 && d[i][j] === d[i - 1][j - 1] + (sameChar(A[i - 1], B[j - 1]) ? 0 : 1)) { ops.push({ t: sameChar(A[i - 1], B[j - 1]) ? 'ok' : 'sub', a: A[i - 1], b: B[j - 1] }); i--; j--; }
       else if (i > 0 && d[i][j] === d[i - 1][j] + 1) { ops.push({ t: 'del', a: A[i - 1] }); i--; }
       else { ops.push({ t: 'ins', b: B[j - 1] }); j--; }
     }
