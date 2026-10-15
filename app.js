@@ -227,10 +227,14 @@
       if (OVERRIDE && !/^http:\/\/(127\.0\.0\.1|localhost)/.test(c.url)) return null;
       return c;
     };
+    /** 구글 서버는 한동안 안 쓰다 부르면 첫 호출이 가끔 실패한다 → 네트워크 오류는 1.5초 뒤 한 번 더 시도. 진도·응원은 같은 날짜를 덮어쓰는 방식이라 다시 보내도 중복되지 않는다. */
     async function request(init, url) {
-      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 15000);
-      try { const res = await fetch(url, Object.assign({ redirect: 'follow', signal: ctl.signal }, init)); return await res.json(); }
-      finally { clearTimeout(t); }
+      for (let attempt = 0; ; attempt++) {
+        const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 15000);
+        try { const res = await fetch(url, Object.assign({ redirect: 'follow', signal: ctl.signal }, init)); return await res.json(); }
+        catch (e) { if (attempt >= 1) throw e; await new Promise(r => setTimeout(r, 1500)); }
+        finally { clearTimeout(t); }
+      }
     }
     const post = body => { const c = conf(); return request({ method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ key: c.key }, body)) }, c.url); };
     /** 쌓인 기록을 순서대로 보낸다. 인터넷이 없으면 그대로 두었다가 다음에 다시 시도(오프라인에서 끝낸 기록도 안 사라짐). */
