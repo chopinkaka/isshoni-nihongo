@@ -1,3 +1,4 @@
+/** @OnlyCurrentDoc */
 /**
  * 잇쇼니 니홍고 — 진도 공유 서버 (Google Apps Script 웹 앱)
  *
