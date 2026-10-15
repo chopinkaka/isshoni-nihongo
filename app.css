@@ -279,3 +279,6 @@ select.full { width: 100%; margin-bottom: .6rem; border-radius: .8rem; }
 .family-line { display: block; padding: .5rem 0 0; color: var(--text); text-decoration: none; font-size: .9rem; border-top: 1px solid var(--line); margin-top: .5rem; }
 textarea { width: 100%; padding: .6rem .8rem; border-radius: .8rem; border: 1.5px solid var(--line); background: var(--surface); color: var(--text); font: inherit; resize: vertical; margin-bottom: .5rem; }
 details.card summary { cursor: pointer; }
+
+.tag.miss { background: var(--warn-bg); color: var(--warn); }
+.prow .pt .tag { margin-left: .3rem; vertical-align: middle; white-space: nowrap; }

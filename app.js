@@ -289,6 +289,8 @@
       case 'patterns':
         html = parts[1] === 'new' ? viewPatternForm() : parts[1] === 'edit' ? viewPatternForm(parts[2]) : parts[1] ? viewPatternDetail(parts[1]) : viewPatterns(); hideTabs = parts[1] === 'new' || parts[1] === 'edit'; break;
       case 'practice': startPractice(parts[1]); return;
+      case 'pastgo': startPast(parts[1], parts[2]); return;
+      case 'past': html = parts[1] ? viewPastDay(parts[1]) : viewPast(); tab = 'today'; break;
       case 'roleplay': startRoleplayPractice(parts[1]); return;
       case 'kana': html = parts[1] === 'quiz' ? viewKanaQuiz() : viewKana(); hideTabs = parts[1] === 'quiz'; break;
       case 'settings': html = viewSettings(); break;
@@ -472,7 +474,7 @@
       ${banner}${storageWarn}${voiceWarn}
       <header class="hello"><div><h1>${esc(greetName())}, 안녕하세요</h1><p class="muted">${mdKo(date)}${day.week ? ` · ${day.week}주차` : ''}</p></div></header>
       <div class="dchips">${dchips.join('')}</div>
-      ${body}${summary}${install}
+      ${body}${pastDays().length ? '<a class="btn ghost block" href="#/past">📚 지난 학습 다시 보기</a>' : ''}${summary}${install}
     </main>`;
   }
 
@@ -852,11 +854,66 @@
         <textarea id="famCode" rows="3" placeholder="isshoni:…" autocomplete="off"></textarea>
         <button class="btn lg block primary" data-act="sync-connect">연결하기</button></div>
       <details class="card"><summary><b>처음 만드는 사람 (광우)</b></summary>
-        <p class="muted">구글 시트에 Apps Script를 한 번 설치하면 가족 코드를 만들 수 있어요. <a href="https://github.com/chopinkaka/isshoni-nihongo/blob/main/docs/2차-설치.md" target="_blank" rel="noopener">설치 안내 ↗</a></p>
+        <p class="muted">구글 시트에 Apps Script를 한 번 설치하면 가족 코드를 만들 수 있어요. <a href="https://github.com/chopinkaka/isshoni-nihongo/blob/main/docs/phase2-setup.md" target="_blank" rel="noopener">설치 안내 ↗</a></p>
         <label class="setlabel" for="famUrl">웹 앱 주소</label><input id="famUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off">
         <label class="setlabel" for="famKey">가족 키 (Code.gs에 넣은 것)</label><input id="famKey" autocomplete="off">
         <button class="btn block primary" data-act="sync-make">코드 만들고 이 폰도 연결</button></details>
       </main>`;
+  }
+
+  /* ================= 지난 학습 ================= */
+  const pastDays = () => DATA.schedule.days.filter(d => d.type === 'study' && d.date < today()).reverse();
+  function pastPatternText(d) {
+    const pt = d.pattern; if (!pt) return '';
+    if (pt.mode === 'new') { const p = DATA.patternsById[pt.id]; return `새 패턴 ${p.no}. ${p.jp}`; }
+    if (pt.mode === 'review') return '지난 패턴 다시 말하기: ' + pt.ids.map(id => DATA.patternsById[id].jp).join(' · ');
+    return '패턴 랠리';
+  }
+  function viewPast() {
+    const days = pastDays();
+    const rows = days.map(d => {
+      const learned = d.newWords.filter(id => state.cards[id]).length;
+      const done = learned === d.newWords.length;
+      const st = done ? '<span class="tag ok">단어 완료</span>' : learned ? `<span class="tag">단어 ${learned}/${d.newWords.length}</span>` : '<span class="tag miss">안 했어요</span>';
+      return `<li><a class="prow" href="#/past/${d.date}"><span class="pn">${d.dow}</span><span class="pt">${mdKo(d.date)} ${st}<small>${d.week}주차 · ${esc(pastPatternText(d))}</small></span></a></li>`;
+    }).join('');
+    return `<main class="page"><a class="back" href="#/today">← 오늘</a><h1>📚 지난 학습</h1>
+      <p class="muted">지나간 날을 골라서 그날의 단어와 패턴을 다시 공부할 수 있어요. 아직 안 한 날도 여기서 할 수 있어요.</p>
+      ${days.length ? `<ul class="plist">${rows}</ul>` : empty('아직 지난 학습이 없어요. 10/5(월)부터 쌓여요.')}</main>`;
+  }
+  function viewPastDay(date) {
+    const d = DATA.dayByDate[date];
+    if (!d || d.type !== 'study' || d.date >= today()) return empty('볼 수 없는 날이에요');
+    const words = d.newWords.map(W).map(w => {
+      const c = state.cards[w.id];
+      return `<li><a href="#/words/${w.id}" class="wrow ${c ? '' : 'todo'}"><i class="dot ${c ? 'green' : ''}"></i><span class="w1">${jp(w.jp)}</span><span class="w2">${esc(w.mean)}<small>${w.kana !== w.jp ? jp(w.kana) : ''}</small></span></a></li>`;
+    }).join('');
+    const hasPattern = !!d.pattern;
+    return `<main class="page"><a class="back" href="#/past">← 지난 학습</a><h1>${mdKo(d.date)}</h1>
+      <p class="muted">${d.week}주차 · ${esc(pastPatternText(d))}</p>
+      <a class="btn lg block primary" href="#/pastgo/${d.date}/all">▶ 이 날 학습 다시 하기</a>
+      <div class="row2"><a class="btn sec" href="#/pastgo/${d.date}/words">단어만</a>${hasPattern ? `<a class="btn sec" href="#/pastgo/${d.date}/pattern">패턴만</a>` : '<span></span>'}</div>
+      <h2>그날의 새 단어</h2><ul class="wlist">${words}</ul></main>`;
+  }
+  /** 지난 날짜의 단어(익히기→떠올리기)와 패턴을 다시 공부한다. 오늘 기록(완료·연속 일수)에는 영향이 없고, 안 배운 단어는 이때 배운 것으로 친다. */
+  function startPast(date, part) {
+    const d = DATA.dayByDate[date];
+    if (!d || d.type !== 'study' || d.date >= today()) { location.replace('#/past'); return; }
+    const items = [];
+    if (part !== 'pattern') {
+      d.newWords.forEach(id => items.push({ kind: 'learn', id, step: '새 단어', sub: '익히기' }));
+      d.newWords.forEach(id => items.push({ kind: 'recall', id, step: '새 단어', sub: '떠올리기' }));
+    }
+    if (part !== 'words' && d.pattern) {
+      const pt = d.pattern;
+      const spec = pt.mode === 'new' ? { mode: 'new', pids: [pt.id], quizIds: C.quizIds(DATA.patternsById[pt.id]), examples: true }
+        : pt.mode === 'review' ? { mode: 'review', pids: pt.ids.slice(), quizIds: pt.ids.flatMap(id => C.quizIds(DATA.patternsById[id])), examples: false }
+        : { mode: 'rally', pids: [], quizIds: C.shuffle(DATA.patterns.patterns.flatMap(C.quizIds)).slice(0, 10), examples: false };
+      items.push(...patternItems(spec).map(x => { delete x.endsPattern; return x; }));
+    }
+    if (!items.length) { location.replace('#/past'); return; }
+    newSession('practice', items, { returnTo: `#/past/${date}` });
+    location.replace('#/session');
   }
 
   /* ================= 단어장 ================= */

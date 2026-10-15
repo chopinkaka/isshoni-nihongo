@@ -1,7 +1,7 @@
 /**
  * 잇쇼니 니홍고 — 진도 공유 서버 (Google Apps Script 웹 앱)
  *
- * 구글 시트에 붙은 스크립트로 배포한다. 설치 방법은 docs/2차-설치.md.
+ * 구글 시트에 붙은 스크립트로 배포한다. 설치 방법은 docs/phase2-setup.md.
  *   POST {key, action:'progress', date, name, reviewCount, newCount, patternId, minutes, totalLearned} → 같은 날짜+이름은 덮어씀(중복 없음)
  *   POST {key, action:'cheer', date, from, to}                                                          → 응원 (같은 날·같은 사람은 한 번만)
  *   GET  ?key=…&from=YYYY-MM-DD&to=YYYY-MM-DD                                                           → 두 사람의 기록과 응원 목록

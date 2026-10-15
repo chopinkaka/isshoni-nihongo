@@ -18,7 +18,7 @@ GitHub Pages: https://chopinkaka.github.io/isshoni-nihongo/
 | `core.js` | 순수 로직: 날짜, SRS, 오늘 분량 계획, 저장 마이그레이션, 가나 퀴즈 |
 | `sw.js` `manifest.webmanifest` `icons/` | PWA (오프라인, 홈 화면 설치) |
 | `data/*.json` | 단어·패턴·가나·일정 |
-| `apps-script/Code.gs` | 가족 진도 공유 서버(구글 시트용 Apps Script). 설치: `docs/2차-설치.md` |
+| `apps-script/Code.gs` | 가족 진도 공유 서버(구글 시트용 Apps Script). 설치: `docs/phase2-setup.md` |
 | `tools/` | `validate_data.py`(데이터 검사), `test_core.js`(로직 검사), `build_furigana.py`(후리가나 생성) |
 
 ## 개발
