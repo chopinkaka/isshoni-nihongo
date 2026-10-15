@@ -364,6 +364,70 @@ const Core = (() => {
     return best || { score: 0, target: '', heard, ops: [] };
   }
 
+  /* ---------- 가족 코드 · 진도 공유(2차) ---------- */
+  const CODE_PREFIX = 'isshoni:';
+  /** 허용하는 서버 주소: Apps Script 웹 앱, 그리고 개발용 로컬 모의 서버. (낯선 코드를 붙여 넣어도 엉뚱한 곳으로 기록이 나가지 않게) */
+  const ALLOWED_URL = /^(https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec|http:\/\/(127\.0\.0\.1|localhost):\d+\/?)$/;
+  function encodeFamilyCode(url, key) {
+    const bytes = new TextEncoder().encode(JSON.stringify({ u: url, k: key }));
+    let bin = ''; bytes.forEach(b => { bin += String.fromCharCode(b); });
+    return CODE_PREFIX + btoa(bin);
+  }
+  /** 메신저로 받은 코드(줄바꿈·공백이 끼어도 됨) → {url, key} 또는 null */
+  function decodeFamilyCode(text) {
+    try {
+      const raw = String(text || '').replace(/\s+/g, '');
+      const body = raw.startsWith(CODE_PREFIX) ? raw.slice(CODE_PREFIX.length) : raw;
+      const bin = atob(body), bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+      const o = JSON.parse(new TextDecoder().decode(bytes));
+      if (!o || typeof o.u !== 'string' || typeof o.k !== 'string' || !ALLOWED_URL.test(o.u) || o.k.length < 8) return null;
+      return { url: o.u, key: o.k };
+    } catch (e) { return null; }
+  }
+  /** 전송 대기열: 같은 날짜의 진도는 최신 것 하나만, 같은 응원은 한 번만 */
+  function queueProgress(state, entry) {
+    state.pendingSync = (state.pendingSync || []).filter(x => !(x.type === 'progress' && x.entry.date === entry.date && x.entry.name === entry.name));
+    state.pendingSync.push({ type: 'progress', entry: Object.assign({}, entry) });
+  }
+  function queueCheer(state, cheer) {
+    state.pendingSync = state.pendingSync || [];
+    if (!state.pendingSync.some(x => x.type === 'cheer' && x.date === cheer.date && x.from === cheer.from && x.to === cheer.to)) state.pendingSync.push(Object.assign({ type: 'cheer' }, cheer));
+  }
+  /** 기록 날짜들로 연속 일수 계산(내 기록과 같은 규칙) */
+  function streakFromDates(data, dates, today) {
+    const daily = {}; dates.forEach(d => { daily[d] = { finished: true }; });
+    return computeStreak(data, { daily }, today);
+  }
+  /** '함께' 화면용: 서버에서 받은 기록(rows)을 사람별로 묶는다. 내가 맨 앞. */
+  function familyBoard(data, rows, cheers, me, today) {
+    const names = [];
+    rows.forEach(r => { if (!names.includes(r.name)) names.push(r.name); });
+    if (!names.includes(me)) names.unshift(me);
+    names.sort((a, b) => (a === me ? -1 : b === me ? 1 : 0));
+    return names.map(name => {
+      const mine = rows.filter(r => r.name === name);
+      const dates = mine.map(r => r.date), mins = {};
+      mine.forEach(r => { mins[r.date] = r.minutes; });
+      const strip = weekStrip(data, { daily: Object.fromEntries(dates.map(d => [d, { finished: true }])) }, today).map(s => Object.assign({ minutes: mins[s.date] || 0 }, s));
+      return {
+        name, isMe: name === me, rows: mine.length,
+        streak: streakFromDates(data, dates, today),
+        totalLearned: mine.reduce((m, r) => Math.max(m, r.totalLearned || 0), 0),
+        doneToday: dates.includes(today), lastDate: dates.slice().sort().pop() || '',
+        week: strip,
+        cheeredToday: cheers.some(c => c.from === me && c.to === name && c.date === today),
+      };
+    });
+  }
+  /** 카톡으로 보낼 오늘 학습 요약 */
+  function shareText(entry, streak, url) {
+    const bits = [];
+    if (entry.newCount) bits.push(`새 단어 ${entry.newCount}개`);
+    if (entry.reviewCount) bits.push(`복습 ${entry.reviewCount}장`);
+    bits.push(`${entry.minutes}분`);
+    return `🇯🇵 오늘 일본어 완료! ${bits.join(' · ')}${streak > 1 ? ` (연속 ${streak}일 🔥)` : ''}\n배운 단어 ${entry.totalLearned}/275\n${url}`;
+  }
+
   /* ---------- 가나 퀴즈 ---------- */
   /** pool: 문제 후보 [{k,kr,ro,type}]. 헷갈리는 짝의 읽기를 보기에 우선 넣는다. */
   function kanaOptions(target, pool, confusions, rng = Math.random, n = 4) {
@@ -399,6 +463,7 @@ const Core = (() => {
     indexData, isQuizId, quizPid, quizIds, quizOf, dayInfo,
     MAX_NEW, newWordTarget, buildPlan, planRemaining, totalLearned, computeStreak, weekStrip, dayDone,
     kanaOptions, pickKana, autoRuby, hasKanji, stripRuby, hira, readingOf, buildLexicon, lexRuby, speechNorm, alignChars, speechMatch,
+    encodeFamilyCode, decodeFamilyCode, queueProgress, queueCheer, streakFromDates, familyBoard, shareText,
   };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = Core;

@@ -194,4 +194,48 @@ ok(data.patterns.patterns.every(p => p.examples.every(e => !Core.hasKanji(e.jp) 
   ok(Core.alignChars('abc', 'abc').dist === 0 && Core.alignChars('abc', 'abd').dist === 1, 'alignChars');
 }
 
+// 가족 코드 · 함께
+{
+  const URL1 = 'https://script.google.com/macros/s/AKfycbx-ABC_123/exec', KEY = '가족-비밀키-1234';
+  const code = Core.encodeFamilyCode(URL1, KEY);
+  ok(code.startsWith('isshoni:'), '가족 코드 접두어');
+  const back = Core.decodeFamilyCode(code);
+  ok(back && back.url === URL1 && back.key === KEY, '코드 왕복(한글 키 포함)');
+  ok(Core.decodeFamilyCode('  ' + code.slice(0, 20) + '\n' + code.slice(20) + ' \n').url === URL1, '메신저에서 줄바꿈이 끼어도 해석');
+  ok(Core.decodeFamilyCode(code.slice(8)).url === URL1, '접두어 없이도 해석');
+  ok(Core.decodeFamilyCode('isshoni:엉터리') === null && Core.decodeFamilyCode('') === null && Core.decodeFamilyCode(null) === null, '엉터리 코드는 null');
+  ok(Core.decodeFamilyCode(Core.encodeFamilyCode('https://evil.example.com/exec', KEY)) === null, '낯선 주소는 거절');
+  ok(Core.decodeFamilyCode(Core.encodeFamilyCode('https://script.google.com.evil.com/macros/s/abc/exec', KEY)) === null, '비슷한 가짜 주소도 거절');
+  ok(Core.decodeFamilyCode(Core.encodeFamilyCode(URL1, 'short')) === null, '너무 짧은 키는 거절');
+  ok(Core.decodeFamilyCode(Core.encodeFamilyCode('http://127.0.0.1:8799/', KEY)).url === 'http://127.0.0.1:8799/', '개발용 로컬 서버 허용');
+}
+{
+  const st = Core.defaultState();
+  Core.queueProgress(st, { date: '2026-10-05', name: '광우', minutes: 5 });
+  Core.queueProgress(st, { date: '2026-10-05', name: '광우', minutes: 9 });
+  Core.queueProgress(st, { date: '2026-10-06', name: '광우', minutes: 7 });
+  ok(st.pendingSync.length === 2 && st.pendingSync[1].entry.minutes === 9 === false || st.pendingSync.find(x => x.entry.date === '2026-10-05').entry.minutes === 9, '같은 날 진도는 최신 하나만 대기');
+  ok(st.pendingSync.length === 2, '대기열 중복 없음: ' + st.pendingSync.length);
+  Core.queueCheer(st, { date: '2026-10-06', from: '광우', to: '아버지' });
+  Core.queueCheer(st, { date: '2026-10-06', from: '광우', to: '아버지' });
+  ok(st.pendingSync.filter(x => x.type === 'cheer').length === 1, '응원 중복 없음');
+}
+{
+  const rows = [
+    { date: '2026-10-05', name: '광우', minutes: 12, totalLearned: 5 }, { date: '2026-10-06', name: '광우', minutes: 15, totalLearned: 10 }, { date: '2026-10-07', name: '광우', minutes: 18, totalLearned: 18 },
+    { date: '2026-10-05', name: '아버지', minutes: 20, totalLearned: 5 },
+  ];
+  const cheers = [{ date: '2026-10-07', from: '광우', to: '아버지' }];
+  const b = Core.familyBoard(data, rows, cheers, '아버지', '2026-10-07');
+  ok(b.length === 2 && b[0].name === '아버지' && b[0].isMe, '내가 맨 앞');
+  ok(b[1].streak === 3 && b[1].totalLearned === 18 && b[1].doneToday, '광우: 연속 3일 · 누적 18 · 오늘 완료');
+  ok(b[0].streak === 1 && !b[0].doneToday && b[0].week.length === 7, '아버지: 하루 쉬어도 연속 유지(월 1일)');
+  ok(b[0].week.find(d => d.date === '2026-10-05').state === 'done' && b[0].week.find(d => d.date === '2026-10-05').minutes === 20, '주간 달력에 분 표시');
+  ok(b[1].cheeredToday === false && Core.familyBoard(data, rows, [{ date: '2026-10-07', from: '아버지', to: '광우' }], '아버지', '2026-10-07')[1].cheeredToday, '응원 여부');
+  ok(Core.familyBoard(data, [], [], '광우', '2026-10-07').length === 1, '기록이 없어도 나는 보임');
+  const t = Core.shareText({ newCount: 5, reviewCount: 8, minutes: 12, totalLearned: 13 }, 3, 'https://x.y/');
+  ok(t.includes('새 단어 5개') && t.includes('복습 8장') && t.includes('12분') && t.includes('연속 3일') && t.includes('13/275') && t.endsWith('https://x.y/'), '공유 문구: ' + t.replace(/\n/g, '/'));
+  ok(!Core.shareText({ newCount: 0, reviewCount: 0, minutes: 3, totalLearned: 0 }, 1, 'u').includes('연속'), '연속 1일은 문구에서 생략');
+}
+
 console.log(`OK: ${n} checks passed`);

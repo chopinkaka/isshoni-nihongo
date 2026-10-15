@@ -21,6 +21,8 @@
   const today = () => OVERRIDE || C.fmt(new Date());
   const md = s => { const d = C.parse(s); return `${d.getMonth() + 1}/${d.getDate()}`; };
   const mdKo = s => { const d = C.parse(s); return `${d.getMonth() + 1}월 ${d.getDate()}일 (${C.DOW_KO[d.getDay()]})`; };
+  const hon = n => (/(아버지|어머니|엄마|아빠)$/.test(n) ? n : n + '님');          // 호칭: 아버지 / 광우님
+  const iga = n => n + (((n.charCodeAt(n.length - 1) - 0xAC00) % 28) ? '이' : '가');      // 받침 있으면 이, 없으면 가
   const greetName = () => (state.user.role === 'dad' ? state.user.name : state.user.name + '님');
   const dLabel = n => n > 0 ? `D-${n}` : n === 0 ? 'D-day' : `D+${-n}`;
 
@@ -211,6 +213,61 @@
     html.classList.add('fs-' + (state.settings.fontSize || 'large'));
   }
 
+  /* ================= 진도 공유 (Apps Script + 구글 시트) ================= */
+  const copyText = async text => {
+    try { await navigator.clipboard.writeText(text); toast('복사했어요'); return true; }
+    catch (e) { toast('복사하지 못했어요. 글자를 길게 눌러 복사해 주세요'); return false; }
+  };
+  const Sync = (() => {
+    let busy = false, fetching = false, cache = null, error = '', lastOk = 0, lastTry = 0;
+    /** 연결 정보. 체험 모드(?date=)에서는 진짜 가족 시트로 기록이 나가지 않게 로컬 모의 서버만 허용한다. */
+    const conf = () => {
+      const c = state.settings.sync;
+      if (!c || !c.url || !c.key) return null;
+      if (OVERRIDE && !/^http:\/\/(127\.0\.0\.1|localhost)/.test(c.url)) return null;
+      return c;
+    };
+    async function request(init, url) {
+      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 15000);
+      try { const res = await fetch(url, Object.assign({ redirect: 'follow', signal: ctl.signal }, init)); return await res.json(); }
+      finally { clearTimeout(t); }
+    }
+    const post = body => { const c = conf(); return request({ method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ key: c.key }, body)) }, c.url); };
+    /** 쌓인 기록을 순서대로 보낸다. 인터넷이 없으면 그대로 두었다가 다음에 다시 시도(오프라인에서 끝낸 기록도 안 사라짐). */
+    async function flush() {
+      if (!conf() || busy || !navigator.onLine) return;
+      busy = true;
+      try {
+        while (state.pendingSync.length) {
+          const item = state.pendingSync[0]; let r;
+          try { r = await post(item.type === 'cheer' ? { action: 'cheer', date: item.date, from: item.from, to: item.to } : Object.assign({ action: 'progress' }, item.entry)); }
+          catch (e) { error = 'network'; break; }
+          if (r && r.ok) { state.pendingSync.shift(); error = ''; lastOk = Date.now(); save(); }
+          else if (r && (r.error === 'forbidden' || r.error === 'key-not-set')) { error = r.error; break; }
+          else { state.pendingSync.shift(); save(); }       // 다시 보내도 소용없는 항목(bad-request 등)은 버린다
+        }
+      } finally { busy = false; }
+      refreshViews();
+    }
+    async function refresh(force) {
+      const c = conf(); if (!c || fetching || !navigator.onLine) return;
+      if (!force && Date.now() - lastTry < 30000) return;
+      lastTry = Date.now(); fetching = true;
+      try {
+        await flush();
+        const u = new URL(c.url); u.searchParams.set('key', c.key); u.searchParams.set('from', C.addDays(today(), -28)); u.searchParams.set('to', today());
+        const r = await request({ method: 'GET' }, u.toString());
+        if (r && r.ok) { cache = { rows: r.rows, cheers: r.cheers, at: Date.now() }; error = ''; lastOk = Date.now(); }
+        else error = (r && r.error) || 'bad-response';
+      } catch (e) { error = 'network'; }
+      finally { fetching = false; refreshViews(); }
+    }
+    const connect = cfg => { state.settings.sync = { url: cfg.url, key: cfg.key }; state.log.forEach(e => C.queueProgress(state, e)); save(); cache = null; error = ''; lastTry = 0; refresh(true); };
+    const disconnect = () => { delete state.settings.sync; state.pendingSync = []; save(); cache = null; error = ''; };
+    return { conf, flush, refresh, connect, disconnect, get cache() { return cache; }, get error() { return error; }, get lastOk() { return lastOk; }, get busy() { return busy || fetching; } };
+  })();
+  function refreshViews() { if (/^#\/(together|today)/.test(location.hash)) render({ keepScroll: true }); }
+
   /* ================= 라우터 ================= */
   let lastRoute = '';
   function go(hash) { if (location.hash === hash) render(); else location.hash = hash; }
@@ -235,6 +292,7 @@
       case 'roleplay': startRoleplayPractice(parts[1]); return;
       case 'kana': html = parts[1] === 'quiz' ? viewKanaQuiz() : viewKana(); hideTabs = parts[1] === 'quiz'; break;
       case 'settings': html = viewSettings(); break;
+      case 'together': html = viewTogether(); break;
       case 'mictest': html = viewMicTest(); hideTabs = false; tab = 'settings'; break;
       default: location.replace('#/today'); return;
     }
@@ -249,7 +307,7 @@
     const nav = $('#tabs'); if (!nav) return;
     nav.hidden = hide;
     document.body.classList.toggle('no-tabs', hide);
-    const tabs = [['today', '📅', '오늘'], ['words', '📖', '단어장'], ['patterns', '💬', '패턴']];
+    const tabs = [['today', '📅', '오늘'], ['words', '📖', '단어장'], ['patterns', '💬', '패턴'], ['together', '🤝', '함께']];
     if (state.settings.kanaWarmup) tabs.push(['kana', 'あ', '가나']);
     tabs.push(['settings', '⚙️', '설정']);
     nav.innerHTML = tabs.map(([r, ic, lb]) => `<a href="#/${r}" class="${r === active ? 'on' : ''}" ${r === active ? 'aria-current="page"' : ''}><span class="ic" aria-hidden="true">${ic}</span>${lb}</a>`).join('');
@@ -392,7 +450,7 @@
     const summary = `<div class="card"><h2>내 진도</h2>
       <div class="stats"><div><b>${streak}</b><small>연속 일</small></div><div><b>${total}<span class="of">/275</span></b><small>배운 단어</small></div><div><b>${Object.keys(state.cards).filter(C.isQuizId).length}<span class="of">/94</span></b><small>패턴 퀴즈</small></div></div>
       <div class="week" aria-label="이번 주">${strip.map(s => `<div class="wd ${s.state}"><small>${s.dow}</small><i>${dotTxt[s.state]}</i></div>`).join('')}</div>
-      <p class="tiny muted">함께 보기(두 사람의 진도)는 2차 업데이트에서 열려요.</p></div>`;
+      ${familyLine()}</div>`;
 
     // 설치 안내
     let install = '';
@@ -726,6 +784,15 @@
     const i = state.log.findIndex(x => x.date === date);
     if (i >= 0) state.log[i] = entry; else state.log.push(entry);     // 같은 날짜는 덮어써서 중복 기록 방지
     save();
+    if (Sync.conf()) { C.queueProgress(state, entry); save(); Sync.flush(); }       // 가족과 공유(인터넷이 없으면 대기열에 남음)
+  }
+  async function shareToday() {
+    const e = state.log.find(x => x.date === today()); if (!e) return;
+    const text = C.shareText(e, C.computeStreak(DATA, state, today()), location.origin + location.pathname.replace(/index\.html$/, ''));
+    if (navigator.share) {
+      try { await navigator.share({ text }); }                      // 공유창에서 가족방을 고르고 직접 보낸다
+      catch (err) { if (err.name !== 'AbortError') copyText(text); }
+    } else if (await copyText(text)) toast('복사했어요. 카톡에 붙여 넣어 보내세요');
   }
   function viewDone() {
     const date = today(), e = state.log.find(x => x.date === date);
@@ -735,8 +802,61 @@
     return `<main class="page center"><div class="confetti" aria-hidden="true">🎉</div><h1>오늘 학습 완료!</h1><p class="muted">${msgs[C.hashStr(date) % msgs.length]}</p>
       <div class="card"><div class="stats"><div><b>${e.minutes}</b><small>분</small></div><div><b>${e.reviewCount}</b><small>복습</small></div><div><b>${e.newCount}</b><small>새 단어</small></div></div>
       <p>배운 단어 <b>${e.totalLearned}</b> / 275 · 연속 <b>${streak}</b>일</p></div>
-      <p class="tiny muted">카톡으로 보내기 버튼은 2차 업데이트에서 열려요.</p>
+      <button class="btn lg block sec" data-act="share">💬 카톡으로 보내기</button>
       <a class="btn lg block primary" href="#/today">오늘 화면으로</a></main>`;
+  }
+
+  /** 오늘 화면 맨 아래: 가족의 오늘 상태 한 줄 */
+  function familyLine() {
+    if (!Sync.conf()) return '<a class="tiny" href="#/together">🤝 가족과 진도 함께 보기 →</a>';
+    Sync.refresh();
+    const others = familyBoardNow().filter(p => !p.isMe);
+    if (!others.length) return `<a class="tiny" href="#/together">🤝 ${Sync.cache ? '아직 가족의 기록이 없어요' : Sync.error ? '가족 기록을 아직 못 받았어요 (인터넷 확인)' : '가족 기록을 불러오는 중…'}</a>`;
+    return others.map(p => `<a class="family-line" href="#/together"><b>${esc(p.name)}</b> ${p.doneToday ? '오늘 완료 ✓' : '오늘 아직'} · 연속 ${p.streak}일 <span aria-hidden="true">›</span></a>`).join('');
+  }
+
+  /* ================= 함께 (가족 진도) ================= */
+  const syncErrText = e => ({ network: '인터넷이 연결되면 자동으로 보내고 받아요', forbidden: '가족 키가 맞지 않아요. 코드를 다시 받아 연결해 주세요', 'key-not-set': '서버에 가족 키를 아직 정하지 않았어요 (설치 안내 3번)', 'bad-response': '서버 응답이 이상해요. 주소가 맞는지 확인해 주세요' }[e] || e);
+  const ago = t => { const m = Math.round((Date.now() - t) / 60000); return !t ? '아직' : m < 1 ? '방금' : m < 60 ? `${m}분 전` : `${Math.round(m / 60)}시간 전`; };
+  /** 서버 기록 + 내 기록(아직 못 보낸 것 포함)으로 사람별 보드를 만든다 */
+  function familyBoardNow() {
+    const cache = Sync.cache, me = state.user.name, from = C.addDays(today(), -28);
+    const others = cache ? cache.rows.filter(r => r.name !== me) : [];
+    const mine = state.log.filter(e => e.date >= from).map(e => ({ date: e.date, name: me, minutes: e.minutes, totalLearned: e.totalLearned }));
+    return C.familyBoard(DATA, others.concat(mine), cache ? cache.cheers : [], me, today());
+  }
+  function viewTogether() {
+    if (!Sync.conf()) return viewTogetherSetup();
+    Sync.refresh();
+    const cache = Sync.cache, me = state.user.name, board = familyBoardNow();
+    const dotTxt = { done: '✓', donetoday: '✓', today: '●', missed: '·', future: '', rest: '휴', off: '' };
+    const people = board.map(p => `<div class="card person ${p.isMe ? 'me' : ''}">
+        <div class="ph"><b>${esc(p.name)}${p.isMe ? ' (나)' : ''}</b><span class="tag ${p.doneToday ? 'ok' : ''}">${p.doneToday ? '오늘 완료 ✓' : '오늘 아직'}</span></div>
+        <div class="stats two"><div><b>${p.streak}</b><small>연속 일</small></div><div><b>${p.totalLearned}<span class="of">/275</span></b><small>배운 단어</small></div></div>
+        <div class="week">${p.week.map(s => `<div class="wd ${s.state}"><small>${s.dow}</small><i>${dotTxt[s.state]}</i><small class="mn">${s.minutes ? s.minutes + '분' : ''}</small></div>`).join('')}</div>
+        ${!p.isMe && !p.doneToday ? (p.cheeredToday ? '<p class="muted center tiny">오늘 응원했어요 ✓</p>' : `<button class="btn sec block" data-act="cheer" data-to="${esc(p.name)}">👏 ${esc(hon(p.name))} 응원하기</button>`) : ''}
+      </div>`).join('');
+    const received = cache ? cache.cheers.filter(c => c.to === me).sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 5) : [];
+    const cheersHtml = received.length ? `<div class="card"><h2>받은 응원</h2><ul class="cheers">${received.map(c => `<li>👏 <b>${esc(iga(hon(c.from)))}</b> 응원했어요 <small>${md(c.date)}</small></li>`).join('')}</ul></div>` : '';
+    const pend = state.pendingSync.length;
+    const status = Sync.error ? `<p class="status warn">${esc(syncErrText(Sync.error))}${pend ? ` (보낼 기록 ${pend}개 대기 중)` : ''}</p>` : `<p class="tiny muted center">${Sync.busy ? '동기화 중…' : `마지막 동기화 ${ago(Sync.lastOk)}`}${pend ? ` · 보낼 기록 ${pend}개 대기 중` : ''}</p>`;
+    const loading = !cache && !Sync.error ? '<p class="muted center">가족 기록을 불러오는 중…</p>' : '';
+    return `<main class="page"><h1>🤝 함께</h1>${loading}${people}${cheersHtml}${status}
+      <div class="row2"><button class="btn sec" data-act="sync-now">새로고침</button><button class="btn sec" data-act="code-copy">가족 코드 복사</button></div>
+      <button class="btn ghost block danger" data-act="sync-off">연결 해제</button></main>`;
+  }
+  function viewTogetherSetup() {
+    return `<main class="page"><h1>🤝 함께</h1>
+      <p class="muted">두 사람이 같은 구글 시트에 진도를 올리면, 서로의 연속 일수와 이번 주 공부 기록을 볼 수 있고 응원도 보낼 수 있어요. 기록은 가족 코드를 아는 사람만 읽고 쓸 수 있어요.</p>
+      <div class="card"><h2>가족 코드를 받았어요</h2><p class="muted tiny">광우가 보내 준 「isshoni:」로 시작하는 글을 붙여 넣으세요.</p>
+        <textarea id="famCode" rows="3" placeholder="isshoni:…" autocomplete="off"></textarea>
+        <button class="btn lg block primary" data-act="sync-connect">연결하기</button></div>
+      <details class="card"><summary><b>처음 만드는 사람 (광우)</b></summary>
+        <p class="muted">구글 시트에 Apps Script를 한 번 설치하면 가족 코드를 만들 수 있어요. <a href="https://github.com/chopinkaka/isshoni-nihongo/blob/main/docs/2차-설치.md" target="_blank" rel="noopener">설치 안내 ↗</a></p>
+        <label class="setlabel" for="famUrl">웹 앱 주소</label><input id="famUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off">
+        <label class="setlabel" for="famKey">가족 키 (Code.gs에 넣은 것)</label><input id="famKey" autocomplete="off">
+        <button class="btn block primary" data-act="sync-make">코드 만들고 이 폰도 연결</button></details>
+      </main>`;
   }
 
   /* ================= 단어장 ================= */
@@ -1045,6 +1165,7 @@
         ${toggle('speechCheck', '발음 확인 버튼 (마이크)', '말하면 알아들은 정도를 보여주고, 녹음해서 원어민 소리와 번갈아 들어요')}
         ${toggle('kanaWarmup', '가나 워밍업', '가나 표·퀴즈 탭을 보여줘요')}
         ${toggle('showReview', '「검수 중」 표시', 'Claude가 채운 내용에 작은 표시')}</div>
+      <div class="card"><div class="setrow"><div><b>🤝 가족과 함께</b><small>${Sync.conf() ? '연결됨 · 진도를 서로 볼 수 있어요' : '연결 안 됨'}</small></div><a class="btn sec sm" href="#/together">열기</a></div></div>
       <div class="card"><div class="setrow"><div><b>일본어 음성</b><small>${vtxt}</small></div><a class="btn sec sm" href="#/voice">확인</a></div>
         <div class="setrow"><div><b>🎙 마이크·음성 인식 시험</b><small>내 발음 피드백 기능을 넣기 전 시험 (실험)</small></div><a class="btn sec sm" href="#/mictest">시험</a></div></div>
       <div class="card"><div class="setlabel">학습 기록 (이 폰에 저장)</div>
@@ -1213,7 +1334,32 @@
       'voice-no': () => { state.settings.voiceOk = false; save(); const g = $('#voiceGuide'); if (g) { g.hidden = false; g.scrollIntoView({ behavior: 'smooth' }); } },
       'voice-skip': () => { state.settings.voiceSkip = true; save(); go(el.dataset.first === '1' ? '#/today' : '#/settings'); },
       'voice-recheck': () => { Speech.pick(); render({ keepScroll: true }); toast(Speech.status() === 'ok' ? '일본어 음성을 찾았어요' : '아직 못 찾았어요'); },
-      export: () => { download(`isshoni-${state.user.name || 'user'}-${today()}.json`, JSON.stringify(state, null, 2)); toast('파일로 저장했어요'); },
+      export: () => {
+        const copy = JSON.parse(JSON.stringify(state)); delete copy.settings.sync;      // 백업 파일에는 가족 키를 넣지 않는다
+        download(`isshoni-${state.user.name || 'user'}-${today()}.json`, JSON.stringify(copy, null, 2)); toast('파일로 저장했어요');
+      },
+      share: () => shareToday(),
+      'sync-connect': () => {
+        const cfg = C.decodeFamilyCode(($('#famCode') || {}).value);
+        if (!cfg) { toast('가족 코드가 맞지 않아요. 「isshoni:」로 시작하는 전체 글을 붙여 넣어 주세요'); return; }
+        Sync.connect(cfg); toast('연결했어요'); go('#/together');
+      },
+      'sync-make': () => {
+        const url = (($('#famUrl') || {}).value || '').trim(), key = (($('#famKey') || {}).value || '').trim();
+        const code = C.encodeFamilyCode(url, key);
+        if (!C.decodeFamilyCode(code)) { toast('주소(https://script.google.com/macros/s/…/exec)와 8자 이상의 키를 확인해 주세요'); return; }
+        Sync.connect({ url, key });
+        copyText(code).then(() => toast('연결했어요. 복사한 가족 코드를 아버지께 카톡으로 보내 주세요'));
+        go('#/together');
+      },
+      'code-copy': () => { const c = Sync.conf(); if (c) copyText(C.encodeFamilyCode(c.url, c.key)); },
+      'sync-now': () => Sync.refresh(true),
+      'sync-off': () => { if (confirm('가족과의 연결을 해제할까요? 이 폰의 학습 기록은 그대로예요.')) { Sync.disconnect(); toast('연결을 해제했어요'); render(); } },
+      cheer: () => {
+        C.queueCheer(state, { date: today(), from: state.user.name, to: el.dataset.to }); save();
+        const c = Sync.cache; if (c) c.cheers.push({ date: today(), from: state.user.name, to: el.dataset.to });
+        toast(`${hon(el.dataset.to)}에게 응원을 보냈어요 👏`); Sync.flush(); render({ keepScroll: true });
+      },
       reset: () => {
         if (!confirm('학습 기록과 내가 추가한 단어·패턴을 모두 지웁니다. 되돌릴 수 없어요.\n먼저 「내보내기」로 백업했나요?')) return;
         if (!confirm('정말 지울까요?')) return;
@@ -1262,7 +1408,8 @@
         if (!obj || typeof obj !== 'object' || !obj.cards) throw new Error('형식이 달라요');
         if (!confirm(`이 파일의 기록으로 바꿉니다.\n(배운 단어 ${Object.keys(obj.cards).length}개 · 지금 기록은 자동 백업돼요)`)) return;
         try { localStorage.setItem(KEY + '.before-import', JSON.stringify(state)); } catch (e) { /* 무시 */ }
-        state = C.migrate(obj); save(); applySettings(); toast('가져왔어요'); render();
+        const keepSync = state.settings.sync;
+        state = C.migrate(obj); if (keepSync) state.settings.sync = keepSync; save(); applySettings(); toast('가져왔어요'); render();
       } catch (err) { toast('가져오기에 실패했어요: ' + err.message); }
     };
     rd.readAsText(file);
@@ -1278,6 +1425,8 @@
     try { await loadData(); } catch (err) { showFatal(err.message); return; }
     if (!location.hash) location.replace('#/today');
     render();
+    window.addEventListener('online', () => Sync.flush());
+    Sync.flush();
     if (Speech.supported) {
       // 안드로이드 크롬은 음성 목록이 늦게 채워진다 → 준비되면 화면 갱신
       setTimeout(() => { Speech.pick(); if (/^#\/(today|voice|settings)/.test(location.hash)) render({ keepScroll: true }); }, 1500);

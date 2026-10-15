@@ -18,6 +18,7 @@ GitHub Pages: https://chopinkaka.github.io/isshoni-nihongo/
 | `core.js` | 순수 로직: 날짜, SRS, 오늘 분량 계획, 저장 마이그레이션, 가나 퀴즈 |
 | `sw.js` `manifest.webmanifest` `icons/` | PWA (오프라인, 홈 화면 설치) |
 | `data/*.json` | 단어·패턴·가나·일정 |
+| `apps-script/Code.gs` | 가족 진도 공유 서버(구글 시트용 Apps Script). 설치: `docs/2차-설치.md` |
 | `tools/` | `validate_data.py`(데이터 검사), `test_core.js`(로직 검사), `build_furigana.py`(후리가나 생성) |
 
 ## 개발
@@ -25,6 +26,7 @@ GitHub Pages: https://chopinkaka.github.io/isshoni-nihongo/
 python -m http.server 8000      # http://localhost:8000
 python tools/validate_data.py   # 데이터 무결성(후리가나 포함)
 node tools/test_core.js         # SRS·일정·마이그레이션 로직 검사
+node tools/test_apps_script.js  # Apps Script 로직(모의 시트) 검사
 ```
 
 후리가나는 `data/*.json`의 `jpr`/`exr` 필드(예: `駅[えき]まで`)로 들어 있습니다. 다시 만들려면 `pip install fugashi unidic-lite` 후 `python tools/build_furigana.py`(`--check`는 한글 발음과 대조만).
